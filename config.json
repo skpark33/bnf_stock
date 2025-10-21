@@ -1,0 +1,10 @@
+{
+    "app_key": "PS804C8CX0AuiNrJCTH1jbNor6mSexMkwDsv",
+    "app_secret": "j7RcxFNS9mgzP6Kh3QqnUq+Qt7zuxWoUBwAFsbyhf03bYjZRuhcLf5uR+XEZbvcmQKs3GYa0AJpbD8AWhi9KERy5UDGpjlQTN4YAUX98GUTy4bF2G3i3gvVoRIyN3ouP+xeyIkO8DLx6N8Xu2DquPhqkQsoiXdtl4Uv/zZIlDu4ttVvBFo0=",
+    "account": "skpark33",
+    "mock": false,
+    "price_increase": 3.0,
+    "volume_ratio": 2.0,
+    "rsi_min": 50,
+    "rsi_max": 70
+}

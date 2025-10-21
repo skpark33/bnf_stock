@@ -1,0 +1,17 @@
+# 처음 시작전 한번만 다음을 설치
+pip install pandas requests pykrx
+
+# 도움말 보기
+python bnf_stock_screener.py --help
+
+# 일반 명령
+python bnf_stock_screener.py --config config.json
+
+# 기준 조정
+python bnf_stock_screener.py \
+  --price-increase 5.0 \
+  --volume-ratio 3.0 \
+  --rsi-min 60 \
+  --rsi-max 80
+
+python bnf_stock_screener.py
