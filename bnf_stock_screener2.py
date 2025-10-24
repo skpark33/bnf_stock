@@ -109,6 +109,14 @@ class KISAPIClient:
             print("  실시간 데이터를 사용합니다.\n")
             return True
     
+    def is_trading_date(self, date_str):
+        """특정 날짜가 거래일인지 확인"""
+        try:
+            df = stock.get_index_ohlcv(date_str, date_str, "1001")
+            return not df.empty
+        except:
+            return False
+
     def get_last_trading_date(self):
         """마지막 거래일 확인"""
         try:
@@ -709,24 +717,29 @@ def main():
     # 날짜별 분석
     if use_historical and date_list:
         all_results = {}
-        
+
         for target_date in date_list:
             print(f"\n{'='*60}")
             print(f"분석 날짜: {target_date}")
             print(f"{'='*60}")
-            
+
+            # --from, --to 옵션이 있을 때는 거래일이 아니면 skip
+            if not api.is_trading_date(target_date):
+                print(f"⚠️  {target_date}는 거래일이 아닙니다. 건너뜁니다.\n")
+                continue
+
             screener = BNFStockScreener(api, target_date=target_date)
-            
+
             selected_stocks = screener.screen_stocks(
-                kospi200_stocks, 
+                kospi200_stocks,
                 criteria,
                 max_stocks=args.max_stocks,
                 save_progress=True,
                 use_historical=True
             )
-            
+
             all_results[target_date] = selected_stocks
-            
+
             if selected_stocks:
                 print(f"\n{target_date}: {len(selected_stocks)}개 종목 선정")
                 for stock in selected_stocks[:5]:
