@@ -156,10 +156,10 @@ class BNFBacktester:
 
             # 익절 Level 1 체크 (고가가 익절1 이상)
             if not sold_level1 and tp_level1 and high >= tp_level1 and position > 0:
-                # 50% 익절
-                profit = (tp_level1 - entry_price) * 0.5
+                # 20% 익절
+                profit = (tp_level1 - entry_price) * 0.2
                 total_profit += profit
-                position -= 0.5
+                position -= 0.2
                 sold_level1 = True
 
                 if exit_date is None:
@@ -169,7 +169,7 @@ class BNFBacktester:
 
             # 익절 Level 2 체크 (고가가 익절2 이상)
             if not sold_level2 and tp_level2 and high >= tp_level2 and position > 0:
-                # 나머지 전량 익절
+                # 나머지 전량 익절 (80% 또는 전량)
                 profit = (tp_level2 - entry_price) * position
                 total_profit += profit
                 position = 0
