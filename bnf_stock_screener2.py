@@ -337,7 +337,8 @@ class BNFStockScreener:
             tp1_atr = None
             tp2_atr = None
         
-        tp_resistance = resistance * 0.99 if resistance and resistance > current_price else None
+        # 저항선은 현재가보다 충분히 높을 때만 고려 (최소 8% 이상)
+        tp_resistance = resistance * 0.99 if resistance and resistance * 0.99 > current_price * 1.08 else None
         
         risk = abs(current_price - strategy['stop_loss']['price']) if strategy['stop_loss'] else current_price * 0.05
         tp1_ratio = current_price + (risk * 2)
@@ -365,7 +366,9 @@ class BNFStockScreener:
             ('손익비 3:1', tp2_ratio),
             ('고정 +10%', current_price * 1.10)
         ]
-        valid_tp2 = [(name, price) for name, price in tp2_candidates if price]
+        # 2차 익절가는 반드시 1차보다 높아야 함
+        valid_tp2 = [(name, price) for name, price in tp2_candidates if price and price > tp1_price]
+
         if valid_tp2:
             tp2_name, tp2_price = min(valid_tp2, key=lambda x: x[1])
             strategy['take_profit'].append({
@@ -373,6 +376,16 @@ class BNFStockScreener:
                 'price': int(tp2_price),
                 'pct': round(((tp2_price - current_price) / current_price) * 100, 2),
                 'reason': tp2_name,
+                'action': '잔량 전량 익절'
+            })
+        else:
+            # 폴백: 1차 익절가의 1.5배를 2차 익절가로 설정
+            fallback_tp2_price = tp1_price * 1.5
+            strategy['take_profit'].append({
+                'level': 2,
+                'price': int(fallback_tp2_price),
+                'pct': round(((fallback_tp2_price - current_price) / current_price) * 100, 2),
+                'reason': '1차 익절가 × 1.5 (폴백)',
                 'action': '잔량 전량 익절'
             })
         
