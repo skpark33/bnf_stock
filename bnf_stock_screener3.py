@@ -351,91 +351,53 @@ class BNFStockScreener:
 
     def calculate_trading_strategy(self, current_price, prices, high_prices, low_prices,
                                    ma25, atr, support, resistance):
-        """손절가/익절가 전략 계산 (ATR + 기술적 분석 복합)"""
+        """손절가/익절가 전략 계산 (MA25 기준)"""
         strategy = {
             'entry_price': current_price,
             'stop_loss': {},
             'take_profit': [],
             'support_line': support,
             'resistance_line': resistance,
-            'atr': atr
+            'atr': atr,
+            'ma25': ma25
         }
 
-        # 손절가 계산
-        atr_stop = current_price - (atr * 2) if atr else None
-        support_stop = support * 0.98 if support else None
-        ma_stop = ma25 * 0.97 if ma25 else None
-        fixed_stop = current_price * 0.95
+        # 손절가 계산: 매수가 대비 -3%
+        stop_loss_price = current_price * 0.97
+        stop_loss_pct = -3.0
 
-        stop_candidates = [
-            ('ATR 기반 (ATR × 2)', atr_stop),
-            ('기술적 지지선', support_stop),
-            ('MA25 기반', ma_stop),
-            ('고정 -5%', fixed_stop)
-        ]
+        strategy['stop_loss'] = {
+            'price': int(stop_loss_price),
+            'pct': round(stop_loss_pct, 2),
+            'reason': '매수가 대비 -3%'
+        }
 
-        valid_stops = [(name, price) for name, price in stop_candidates if price]
-        if valid_stops:
-            stop_loss_name, stop_loss_price = max(valid_stops, key=lambda x: x[1])
-            stop_loss_pct = ((stop_loss_price - current_price) / current_price) * 100
+        # 1차 익절가: MA25 도달 시
+        if ma25:
+            tp1_price = ma25
+            tp1_pct = ((tp1_price - current_price) / current_price) * 100
 
-            strategy['stop_loss'] = {
-                'price': int(stop_loss_price),
-                'pct': round(stop_loss_pct, 2),
-                'reason': stop_loss_name,
-                'alternatives': [
-                    {'method': name, 'price': int(price), 'pct': round(((price - current_price) / current_price) * 100, 2)}
-                    for name, price in valid_stops if price != stop_loss_price
-                ]
-            }
-
-        # 익절가 계산
-        if atr:
-            tp1_atr = current_price + (atr * 3)
-            tp2_atr = current_price + (atr * 5)
-        else:
-            tp1_atr = None
-            tp2_atr = None
-
-        tp_resistance = resistance * 0.99 if resistance and resistance > current_price else None
-
-        risk = abs(current_price - strategy['stop_loss']['price']) if strategy['stop_loss'] else current_price * 0.05
-        tp1_ratio = current_price + (risk * 2)
-        tp2_ratio = current_price + (risk * 3)
-
-        tp1_candidates = [
-            ('ATR × 3', tp1_atr),
-            ('손익비 2:1', tp1_ratio),
-            ('고정 +5%', current_price * 1.05)
-        ]
-        valid_tp1 = [(name, price) for name, price in tp1_candidates if price]
-        if valid_tp1:
-            tp1_name, tp1_price = min(valid_tp1, key=lambda x: x[1])
             strategy['take_profit'].append({
                 'level': 1,
                 'price': int(tp1_price),
-                'pct': round(((tp1_price - current_price) / current_price) * 100, 2),
-                'reason': tp1_name,
+                'pct': round(tp1_pct, 2),
+                'reason': 'MA25 도달',
                 'action': '50% 부분 익절'
             })
 
-        tp2_candidates = [
-            ('ATR × 5', tp2_atr),
-            ('저항선', tp_resistance),
-            ('손익비 3:1', tp2_ratio),
-            ('고정 +10%', current_price * 1.10)
-        ]
-        valid_tp2 = [(name, price) for name, price in tp2_candidates if price]
-        if valid_tp2:
-            tp2_name, tp2_price = min(valid_tp2, key=lambda x: x[1])
+            # 2차 익절가: MA25에서 +5% 이격
+            tp2_price = ma25 * 1.05
+            tp2_pct = ((tp2_price - current_price) / current_price) * 100
+
             strategy['take_profit'].append({
                 'level': 2,
                 'price': int(tp2_price),
-                'pct': round(((tp2_price - current_price) / current_price) * 100, 2),
-                'reason': tp2_name,
+                'pct': round(tp2_pct, 2),
+                'reason': 'MA25 +5% 이격',
                 'action': '잔량 전량 익절'
             })
 
+        # 손익비 계산
         if strategy['stop_loss'] and strategy['take_profit']:
             risk_amount = current_price - strategy['stop_loss']['price']
             reward_amount = strategy['take_profit'][0]['price'] - current_price
@@ -538,10 +500,10 @@ class BNFStockScreener:
                 # Screener 3 선정 조건 검사
                 passed = True
 
-                # 1) 현재가격이 25일 이동평균선보다 높을 것
+                # 1) MA25 이격율이 -10% 이하일 것 (현재가가 MA25보다 10% 이상 낮을 것)
                 if ma25:
                     price_above_ma25_pct = ((current_price - ma25) / ma25) * 100
-                    if price_above_ma25_pct < criteria.get('ma25_above_pct', 0):
+                    if price_above_ma25_pct > criteria.get('ma25_deviation_max', -10):
                         passed = False
                 else:
                     passed = False
@@ -583,15 +545,15 @@ class BNFStockScreener:
                         'trading_strategy': trading_strategy
                     }
                     results.append(result)
-                    print(f"✓ 선정: {stock_name} ({stock_code}) - MA25대비: +{price_above_ma25_pct:.2f}%, RSI: {rsi:.2f}, MACD: {macd_line:.2f}")
+                    print(f"✓ 선정: {stock_name} ({stock_code}) - 이격율: {price_above_ma25_pct:.2f}%, RSI: {rsi:.2f}, MACD: {macd_line:.2f}")
 
             except Exception as e:
                 continue
 
         print(f"\n분석 완료! 총 {len(results)}개 종목 선정됨")
 
-        # MA25 대비 상승률 순으로 정렬
-        results.sort(key=lambda x: x['price_above_ma25_pct'] if x['price_above_ma25_pct'] else 0, reverse=True)
+        # MA25 이격율 낮은 순으로 정렬 (음수가 클수록 우선)
+        results.sort(key=lambda x: x['price_above_ma25_pct'] if x['price_above_ma25_pct'] is not None else 0, reverse=False)
 
         if save_progress and results:
             self._save_results(results)
@@ -604,7 +566,7 @@ class BNFStockScreener:
             os.makedirs('data/json', exist_ok=True)
             os.makedirs('data/csv', exist_ok=True)
 
-            json_filename = f"data/json/result_screener3_{self.last_trading_date}.json"
+            json_filename = f"data/json/result_{self.last_trading_date}.json"
 
             output_data = {
                 'screener_version': 3,
@@ -612,7 +574,7 @@ class BNFStockScreener:
                 'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'total_count': len(results),
                 'criteria': {
-                    'description': 'MA25보다 상위, RSI 과매도, MACD > 0'
+                    'description': 'MA25 이격율 -10% 이하, RSI 과매도, MACD > 0'
                 },
                 'selected_stocks': []
             }
@@ -641,7 +603,7 @@ class BNFStockScreener:
 
             print(f"\nJSON 저장: {json_filename}")
 
-            csv_filename = f"data/csv/result_screener3_{self.last_trading_date}.csv"
+            csv_filename = f"data/csv/result_{self.last_trading_date}.csv"
             df = pd.DataFrame(results)
             df.insert(0, 'trading_date', self.last_trading_date)
             df.to_csv(csv_filename, index=False, encoding='utf-8-sig')
@@ -667,9 +629,11 @@ def main():
      python bnf_stock_screener3.py --config config.json --from 20250101 --to 20250131
 
 Screener 3 선정 기준:
-  - 현재가격이 25일 이동평균선보다 상위
+  - MA25 이격율이 -10% 이하 (현재가가 MA25보다 10% 이상 낮을 것)
   - RSI 값이 과매도 상태 (기본값: RSI < 30)
   - MACD 값이 0보다 클 것
+
+  이격율(%) = (현재주가 - MA25) ÷ MA25 × 100
         '''
     )
 
@@ -682,7 +646,7 @@ Screener 3 선정 기준:
     parser.add_argument('--to', dest='to_date', help='종료일 (YYYYMMDD)')
     parser.add_argument('--max-stocks', type=int, default=None, help='분석할 최대 종목 수')
     parser.add_argument('--no-cache', action='store_true', help='캐시 파일 사용 안함')
-    parser.add_argument('--ma25-above-pct', type=float, default=0.0, help='MA25 대비 최소 상승률 %% (기본값: 0%%, 즉 MA25보다 높으면 됨)')
+    parser.add_argument('--ma25-deviation-max', type=float, default=-10.0, help='MA25 이격율 최댓값 %% (기본값: -10%%, 즉 MA25보다 10%% 이상 낮아야 함)')
     parser.add_argument('--rsi-oversold', type=int, default=30, help='RSI 과매도 기준 (기본값: 30)')
 
     args = parser.parse_args()
@@ -771,16 +735,13 @@ Screener 3 선정 기준:
 
     # 선정 기준 설정 (Screener 3)
     criteria = {
-        'ma25_above_pct': args.ma25_above_pct,
+        'ma25_deviation_max': args.ma25_deviation_max,
         'rsi_oversold': args.rsi_oversold
     }
 
     print("=" * 60)
     print("BNF 매매법 기준 (Screener 3):")
-    if criteria['ma25_above_pct'] > 0:
-        print(f"  - MA25 대비: {criteria['ma25_above_pct']}% 이상 상위")
-    else:
-        print(f"  - MA25보다 상위")
+    print(f"  - MA25 이격율: {criteria['ma25_deviation_max']}% 이하")
     print(f"  - RSI: {criteria['rsi_oversold']} 미만 (과매도)")
     print(f"  - MACD: 0보다 큰 값")
     print("=" * 60)
@@ -809,7 +770,7 @@ Screener 3 선정 기준:
             if selected_stocks:
                 print(f"\n{target_date}: {len(selected_stocks)}개 종목 선정")
                 for stock in selected_stocks[:5]:
-                    print(f"  - {stock['stock_name']} ({stock['stock_code']}): MA25대비 +{stock['price_above_ma25_pct']:.2f}%, RSI {stock['rsi']:.2f}")
+                    print(f"  - {stock['stock_name']} ({stock['stock_code']}): 이격율 {stock['price_above_ma25_pct']:.2f}%, RSI {stock['rsi']:.2f}")
 
         # 전체 요약
         print("\n" + "=" * 60)
@@ -847,7 +808,7 @@ Screener 3 선정 기준:
             for idx, stock in enumerate(selected_stocks[:20], 1):
                 strategy = stock['trading_strategy']
                 print(f"\n{idx}. {stock['stock_name']} ({stock['stock_code']}) - 현재가: {int(stock['current_price']):,}원")
-                print(f"   📊 MA25 대비: +{stock['price_above_ma25_pct']:.2f}% | RSI: {stock['rsi']:.2f} | MACD: {stock['macd']:.2f}")
+                print(f"   📊 이격율: {stock['price_above_ma25_pct']:.2f}% | RSI: {stock['rsi']:.2f} | MACD: {stock['macd']:.2f}")
 
                 if strategy['stop_loss']:
                     sl = strategy['stop_loss']
@@ -862,8 +823,8 @@ Screener 3 선정 기준:
 
             print("\n" + "=" * 60)
             print("통계 정보:")
-            print(f"  평균 MA25 대비 상승률: {df['price_above_ma25_pct'].mean():.2f}%")
-            print(f"  최대 MA25 대비 상승률: {df['price_above_ma25_pct'].max():.2f}%")
+            print(f"  평균 이격율: {df['price_above_ma25_pct'].mean():.2f}%")
+            print(f"  최소 이격율: {df['price_above_ma25_pct'].min():.2f}%")
             print(f"  평균 RSI: {df['rsi'].mean():.2f}")
             print(f"  평균 MACD: {df['macd'].mean():.2f}")
             print(f"  평균 거래량 비율: {df['volume_ratio'].mean():.2f}배")
