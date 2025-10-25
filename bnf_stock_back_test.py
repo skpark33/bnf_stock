@@ -100,7 +100,7 @@ class BNFBacktester:
                     return None
         return None
 
-    def simulate_trading(self, stock_info):
+    def simulate_trading(self, stock_info, tp1_ratio=0.5, tp2_ratio=0.5):
         """개별 종목 매매 시뮬레이션"""
         code = stock_info['code']
         name = stock_info['name']
@@ -156,10 +156,10 @@ class BNFBacktester:
 
             # 익절 Level 1 체크 (고가가 익절1 이상)
             if not sold_level1 and tp_level1 and high >= tp_level1 and position > 0:
-                # 50% 익절
-                profit = (tp_level1 - entry_price) * 0.5
+                # 1차 익절
+                profit = (tp_level1 - entry_price) * tp1_ratio
                 total_profit += profit
-                position -= 0.5
+                position -= tp1_ratio
                 sold_level1 = True
 
                 if exit_date is None:
@@ -169,7 +169,7 @@ class BNFBacktester:
 
             # 익절 Level 2 체크 (고가가 익절2 이상)
             if not sold_level2 and tp_level2 and high >= tp_level2 and position > 0:
-                # 나머지 전량 익절
+                # 2차 익절 (나머지 전량)
                 profit = (tp_level2 - entry_price) * position
                 total_profit += profit
                 position = 0
@@ -213,7 +213,7 @@ class BNFBacktester:
 
         return result
 
-    def run_backtest(self):
+    def run_backtest(self, tp1_ratio=0.5, tp2_ratio=0.5):
         """전체 백테스팅 실행"""
         print("=" * 60)
         print("백테스팅 시작...")
@@ -226,7 +226,7 @@ class BNFBacktester:
             if idx % 10 == 0:
                 print(f"진행중: {idx}/{total} ({idx/total*100:.1f}%)")
 
-            result = self.simulate_trading(stock_info)
+            result = self.simulate_trading(stock_info, tp1_ratio, tp2_ratio)
 
             if result:
                 results.append(result)
@@ -343,14 +343,27 @@ def main():
         epilog='''
 사용 예시:
   python bnf_stock_back_test.py --config config.json --from 20250101 --to 20250131
+  python bnf_stock_back_test.py --config config.json --from 20250101 --to 20250131 --tp1-ratio 20 --tp2-ratio 80
+  python bnf_stock_back_test.py --config config.json --from 20250101 --to 20250131 --tp1-ratio 30 --tp2-ratio 70
         '''
     )
 
     parser.add_argument('--config', help='설정 파일 경로 (JSON)')
     parser.add_argument('--from', dest='from_date', required=True, help='시작일 (YYYYMMDD) - 필수')
     parser.add_argument('--to', dest='to_date', required=True, help='종료일 (YYYYMMDD) - 필수')
+    parser.add_argument('--tp1-ratio', type=float, default=50.0, help='1차 익절 비율 (%%)')
+    parser.add_argument('--tp2-ratio', type=float, default=50.0, help='2차 익절 비율 (%%)')
 
     args = parser.parse_args()
+
+    # 익절 비율 유효성 검사
+    if args.tp1_ratio + args.tp2_ratio != 100.0:
+        print(f"❌ 익절 비율의 합이 100%가 되어야 합니다. (현재: {args.tp1_ratio + args.tp2_ratio}%)")
+        sys.exit(1)
+
+    if args.tp1_ratio <= 0 or args.tp2_ratio <= 0:
+        print("❌ 익절 비율은 0보다 커야 합니다.")
+        sys.exit(1)
 
     print("=" * 60)
     print("BNF 매매법 백테스팅 프로그램")
@@ -368,7 +381,8 @@ def main():
         print("❌ 날짜 형식이 잘못되었습니다. YYYYMMDD 형식으로 입력해주세요.")
         sys.exit(1)
 
-    print(f"\n분석 기간: {args.from_date} ~ {args.to_date}\n")
+    print(f"\n분석 기간: {args.from_date} ~ {args.to_date}")
+    print(f"익절 비율: 1차 {args.tp1_ratio}% / 2차 {args.tp2_ratio}%\n")
 
     # 백테스터 초기화
     backtester = BNFBacktester(config_file=args.config)
@@ -381,7 +395,7 @@ def main():
         sys.exit(1)
 
     # 백테스팅 실행
-    results = backtester.run_backtest()
+    results = backtester.run_backtest(tp1_ratio=args.tp1_ratio / 100.0, tp2_ratio=args.tp2_ratio / 100.0)
 
     # 결과 저장
     if results:
