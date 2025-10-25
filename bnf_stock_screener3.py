@@ -318,6 +318,42 @@ class BNFStockScreener:
         rsi = 100 - (100 / (1 + rs))
         return rsi
 
+    def calculate_rsi_series(self, prices, period=14):
+        """RSI 시계열 계산 (최근 여러 일의 RSI 반환)"""
+        if len(prices) < period + 1:
+            return None
+
+        deltas = [prices[i] - prices[i-1] for i in range(1, len(prices))]
+        gains = [d if d > 0 else 0 for d in deltas]
+        losses = [-d if d < 0 else 0 for d in deltas]
+
+        rsi_values = []
+
+        # 첫 RSI 계산 (SMA 방식)
+        avg_gain = sum(gains[:period]) / period
+        avg_loss = sum(losses[:period]) / period
+
+        if avg_loss == 0:
+            rsi = 100
+        else:
+            rs = avg_gain / avg_loss
+            rsi = 100 - (100 / (1 + rs))
+        rsi_values.append(rsi)
+
+        # 이후 RSI 계산 (EMA 방식)
+        for i in range(period, len(gains)):
+            avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+            avg_loss = (avg_loss * (period - 1) + losses[i]) / period
+
+            if avg_loss == 0:
+                rsi = 100
+            else:
+                rs = avg_gain / avg_loss
+                rsi = 100 - (100 / (1 + rs))
+            rsi_values.append(rsi)
+
+        return rsi_values
+
     def calculate_atr(self, high_prices, low_prices, close_prices, period=14):
         """ATR (Average True Range) 계산"""
         if len(high_prices) < period + 1:
@@ -488,6 +524,7 @@ class BNFStockScreener:
                 # 기술적 지표 계산
                 ma25 = self.calculate_moving_average(prices, 25)
                 rsi = self.calculate_rsi(prices, 14)
+                rsi_series = self.calculate_rsi_series(prices, 14)
                 macd_line, signal_line, macd_hist = self.calculate_macd(prices)
                 atr = self.calculate_atr(high_prices, low_prices, prices, 14)
                 support, resistance = self.calculate_support_resistance(high_prices, low_prices, prices, 20)
@@ -499,6 +536,8 @@ class BNFStockScreener:
 
                 # Screener 3 선정 조건 검사
                 passed = True
+                prev_rsi = None
+                curr_rsi = None
 
                 # 1) MA25 이격율이 -10% 이하일 것 (현재가가 MA25보다 10% 이상 낮을 것)
                 if ma25:
@@ -508,9 +547,14 @@ class BNFStockScreener:
                 else:
                     passed = False
 
-                # 2) RSI 값이 과매도 상태 (RSI < 30)
-                if rsi:
-                    if rsi >= criteria.get('rsi_oversold', 30):
+                # 2) RSI 과매도 상태에서 매수 신호 (RSI 상승 전환)
+                if rsi_series and len(rsi_series) >= 2:
+                    prev_rsi = rsi_series[-2]
+                    curr_rsi = rsi_series[-1]
+                    rsi_oversold_threshold = criteria.get('rsi_oversold', 30)
+
+                    # 이전 RSI가 과매도 상태이고, 현재 RSI가 상승 전환한 경우
+                    if not (prev_rsi < rsi_oversold_threshold and curr_rsi > prev_rsi):
                         passed = False
                 else:
                     passed = False
@@ -538,6 +582,8 @@ class BNFStockScreener:
                         'ma25': round(ma25, 2) if ma25 else None,
                         'price_above_ma25_pct': round(price_above_ma25_pct, 2) if ma25 else None,
                         'rsi': round(rsi, 2) if rsi else None,
+                        'prev_rsi': round(prev_rsi, 2) if prev_rsi is not None else None,
+                        'curr_rsi': round(curr_rsi, 2) if curr_rsi is not None else None,
                         'macd': round(macd_line, 2) if macd_line is not None else None,
                         'macd_signal': round(signal_line, 2) if signal_line is not None else None,
                         'macd_hist': round(macd_hist, 2) if macd_hist is not None else None,
@@ -545,7 +591,8 @@ class BNFStockScreener:
                         'trading_strategy': trading_strategy
                     }
                     results.append(result)
-                    print(f"✓ 선정: {stock_name} ({stock_code}) - 이격율: {price_above_ma25_pct:.2f}%, RSI: {rsi:.2f}, MACD: {macd_line:.2f}")
+                    rsi_change = curr_rsi - prev_rsi if (curr_rsi and prev_rsi) else 0
+                    print(f"✓ 선정: {stock_name} ({stock_code}) - 이격율: {price_above_ma25_pct:.2f}%, RSI: {prev_rsi:.2f}→{curr_rsi:.2f} (+{rsi_change:.2f}), MACD: {macd_line:.2f}")
 
             except Exception as e:
                 continue
@@ -574,7 +621,7 @@ class BNFStockScreener:
                 'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'total_count': len(results),
                 'criteria': {
-                    'description': 'MA25 이격율 -10% 이하, RSI 과매도, MACD > 0'
+                    'description': 'MA25 이격율 -10% 이하, RSI 과매도 매수 신호, MACD > 0'
                 },
                 'selected_stocks': []
             }
@@ -590,6 +637,8 @@ class BNFStockScreener:
                     'ma25': result['ma25'],
                     'price_above_ma25_pct': result['price_above_ma25_pct'],
                     'rsi': result['rsi'],
+                    'prev_rsi': result['prev_rsi'],
+                    'curr_rsi': result['curr_rsi'],
                     'macd': result['macd'],
                     'macd_signal': result['macd_signal'],
                     'macd_hist': result['macd_hist'],
@@ -630,10 +679,11 @@ def main():
 
 Screener 3 선정 기준:
   - MA25 이격율이 -10% 이하 (현재가가 MA25보다 10% 이상 낮을 것)
-  - RSI 값이 과매도 상태 (기본값: RSI < 30)
+  - RSI 과매도 매수 신호 (이전 RSI < 30이고 현재 RSI > 이전 RSI)
   - MACD 값이 0보다 클 것
 
   이격율(%) = (현재주가 - MA25) ÷ MA25 × 100
+  RSI 매수 신호: 과매도 구간에서 상승 전환
         '''
     )
 
@@ -742,7 +792,7 @@ Screener 3 선정 기준:
     print("=" * 60)
     print("BNF 매매법 기준 (Screener 3):")
     print(f"  - MA25 이격율: {criteria['ma25_deviation_max']}% 이하")
-    print(f"  - RSI: {criteria['rsi_oversold']} 미만 (과매도)")
+    print(f"  - RSI 과매도 매수 신호: 이전 RSI < {criteria['rsi_oversold']}이고 현재 RSI 상승")
     print(f"  - MACD: 0보다 큰 값")
     print("=" * 60)
 
@@ -770,7 +820,10 @@ Screener 3 선정 기준:
             if selected_stocks:
                 print(f"\n{target_date}: {len(selected_stocks)}개 종목 선정")
                 for stock in selected_stocks[:5]:
-                    print(f"  - {stock['stock_name']} ({stock['stock_code']}): 이격율 {stock['price_above_ma25_pct']:.2f}%, RSI {stock['rsi']:.2f}")
+                    prev_rsi = stock.get('prev_rsi', 0)
+                    curr_rsi = stock.get('curr_rsi', 0)
+                    rsi_change = curr_rsi - prev_rsi if (curr_rsi and prev_rsi) else 0
+                    print(f"  - {stock['stock_name']} ({stock['stock_code']}): 이격율 {stock['price_above_ma25_pct']:.2f}%, RSI {prev_rsi:.2f}→{curr_rsi:.2f} (+{rsi_change:.2f})")
 
         # 전체 요약
         print("\n" + "=" * 60)
@@ -800,15 +853,18 @@ Screener 3 선정 기준:
 
             print("[ TOP 20 종목 ]")
             print("\n종목 기본 정보:")
-            basic_cols = ['stock_code', 'stock_name', 'current_price', 'price_above_ma25_pct', 'rsi', 'macd', 'volume_ratio']
+            basic_cols = ['stock_code', 'stock_name', 'current_price', 'price_above_ma25_pct', 'prev_rsi', 'curr_rsi', 'macd', 'volume_ratio']
             print(df[basic_cols].head(20).to_string(index=False))
 
             print("\n\n매매 전략 (손절/익절):")
             print("-" * 100)
             for idx, stock in enumerate(selected_stocks[:20], 1):
                 strategy = stock['trading_strategy']
+                prev_rsi = stock.get('prev_rsi', 0)
+                curr_rsi = stock.get('curr_rsi', 0)
+                rsi_change = curr_rsi - prev_rsi if (curr_rsi and prev_rsi) else 0
                 print(f"\n{idx}. {stock['stock_name']} ({stock['stock_code']}) - 현재가: {int(stock['current_price']):,}원")
-                print(f"   📊 이격율: {stock['price_above_ma25_pct']:.2f}% | RSI: {stock['rsi']:.2f} | MACD: {stock['macd']:.2f}")
+                print(f"   📊 이격율: {stock['price_above_ma25_pct']:.2f}% | RSI: {prev_rsi:.2f}→{curr_rsi:.2f} (+{rsi_change:.2f}) | MACD: {stock['macd']:.2f}")
 
                 if strategy['stop_loss']:
                     sl = strategy['stop_loss']
@@ -825,7 +881,8 @@ Screener 3 선정 기준:
             print("통계 정보:")
             print(f"  평균 이격율: {df['price_above_ma25_pct'].mean():.2f}%")
             print(f"  최소 이격율: {df['price_above_ma25_pct'].min():.2f}%")
-            print(f"  평균 RSI: {df['rsi'].mean():.2f}")
+            print(f"  평균 RSI (이전→현재): {df['prev_rsi'].mean():.2f} → {df['curr_rsi'].mean():.2f}")
+            print(f"  평균 RSI 변화: +{(df['curr_rsi'].mean() - df['prev_rsi'].mean()):.2f}")
             print(f"  평균 MACD: {df['macd'].mean():.2f}")
             print(f"  평균 거래량 비율: {df['volume_ratio'].mean():.2f}배")
 
