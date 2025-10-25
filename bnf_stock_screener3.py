@@ -538,10 +538,10 @@ class BNFStockScreener:
                 # Screener 3 선정 조건 검사
                 passed = True
 
-                # 1) 현재가격이 25일 이동평균선보다 높을 것
+                # 1) MA25 이격율이 -10% 이하일 것 (현재가가 MA25보다 10% 이상 낮을 것)
                 if ma25:
                     price_above_ma25_pct = ((current_price - ma25) / ma25) * 100
-                    if price_above_ma25_pct < criteria.get('ma25_above_pct', 0):
+                    if price_above_ma25_pct > criteria.get('ma25_deviation_max', -10):
                         passed = False
                 else:
                     passed = False
@@ -583,15 +583,15 @@ class BNFStockScreener:
                         'trading_strategy': trading_strategy
                     }
                     results.append(result)
-                    print(f"✓ 선정: {stock_name} ({stock_code}) - MA25대비: +{price_above_ma25_pct:.2f}%, RSI: {rsi:.2f}, MACD: {macd_line:.2f}")
+                    print(f"✓ 선정: {stock_name} ({stock_code}) - 이격율: {price_above_ma25_pct:.2f}%, RSI: {rsi:.2f}, MACD: {macd_line:.2f}")
 
             except Exception as e:
                 continue
 
         print(f"\n분석 완료! 총 {len(results)}개 종목 선정됨")
 
-        # MA25 대비 상승률 순으로 정렬
-        results.sort(key=lambda x: x['price_above_ma25_pct'] if x['price_above_ma25_pct'] else 0, reverse=True)
+        # MA25 이격율 낮은 순으로 정렬 (음수가 클수록 우선)
+        results.sort(key=lambda x: x['price_above_ma25_pct'] if x['price_above_ma25_pct'] is not None else 0, reverse=False)
 
         if save_progress and results:
             self._save_results(results)
@@ -612,7 +612,7 @@ class BNFStockScreener:
                 'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'total_count': len(results),
                 'criteria': {
-                    'description': 'MA25보다 상위, RSI 과매도, MACD > 0'
+                    'description': 'MA25 이격율 -10% 이하, RSI 과매도, MACD > 0'
                 },
                 'selected_stocks': []
             }
@@ -667,9 +667,11 @@ def main():
      python bnf_stock_screener3.py --config config.json --from 20250101 --to 20250131
 
 Screener 3 선정 기준:
-  - 현재가격이 25일 이동평균선보다 상위
+  - MA25 이격율이 -10% 이하 (현재가가 MA25보다 10% 이상 낮을 것)
   - RSI 값이 과매도 상태 (기본값: RSI < 30)
   - MACD 값이 0보다 클 것
+
+  이격율(%) = (현재주가 - MA25) ÷ MA25 × 100
         '''
     )
 
@@ -682,7 +684,7 @@ Screener 3 선정 기준:
     parser.add_argument('--to', dest='to_date', help='종료일 (YYYYMMDD)')
     parser.add_argument('--max-stocks', type=int, default=None, help='분석할 최대 종목 수')
     parser.add_argument('--no-cache', action='store_true', help='캐시 파일 사용 안함')
-    parser.add_argument('--ma25-above-pct', type=float, default=0.0, help='MA25 대비 최소 상승률 %% (기본값: 0%%, 즉 MA25보다 높으면 됨)')
+    parser.add_argument('--ma25-deviation-max', type=float, default=-10.0, help='MA25 이격율 최댓값 %% (기본값: -10%%, 즉 MA25보다 10%% 이상 낮아야 함)')
     parser.add_argument('--rsi-oversold', type=int, default=30, help='RSI 과매도 기준 (기본값: 30)')
 
     args = parser.parse_args()
@@ -771,16 +773,13 @@ Screener 3 선정 기준:
 
     # 선정 기준 설정 (Screener 3)
     criteria = {
-        'ma25_above_pct': args.ma25_above_pct,
+        'ma25_deviation_max': args.ma25_deviation_max,
         'rsi_oversold': args.rsi_oversold
     }
 
     print("=" * 60)
     print("BNF 매매법 기준 (Screener 3):")
-    if criteria['ma25_above_pct'] > 0:
-        print(f"  - MA25 대비: {criteria['ma25_above_pct']}% 이상 상위")
-    else:
-        print(f"  - MA25보다 상위")
+    print(f"  - MA25 이격율: {criteria['ma25_deviation_max']}% 이하")
     print(f"  - RSI: {criteria['rsi_oversold']} 미만 (과매도)")
     print(f"  - MACD: 0보다 큰 값")
     print("=" * 60)
@@ -809,7 +808,7 @@ Screener 3 선정 기준:
             if selected_stocks:
                 print(f"\n{target_date}: {len(selected_stocks)}개 종목 선정")
                 for stock in selected_stocks[:5]:
-                    print(f"  - {stock['stock_name']} ({stock['stock_code']}): MA25대비 +{stock['price_above_ma25_pct']:.2f}%, RSI {stock['rsi']:.2f}")
+                    print(f"  - {stock['stock_name']} ({stock['stock_code']}): 이격율 {stock['price_above_ma25_pct']:.2f}%, RSI {stock['rsi']:.2f}")
 
         # 전체 요약
         print("\n" + "=" * 60)
@@ -847,7 +846,7 @@ Screener 3 선정 기준:
             for idx, stock in enumerate(selected_stocks[:20], 1):
                 strategy = stock['trading_strategy']
                 print(f"\n{idx}. {stock['stock_name']} ({stock['stock_code']}) - 현재가: {int(stock['current_price']):,}원")
-                print(f"   📊 MA25 대비: +{stock['price_above_ma25_pct']:.2f}% | RSI: {stock['rsi']:.2f} | MACD: {stock['macd']:.2f}")
+                print(f"   📊 이격율: {stock['price_above_ma25_pct']:.2f}% | RSI: {stock['rsi']:.2f} | MACD: {stock['macd']:.2f}")
 
                 if strategy['stop_loss']:
                     sl = strategy['stop_loss']
@@ -862,8 +861,8 @@ Screener 3 선정 기준:
 
             print("\n" + "=" * 60)
             print("통계 정보:")
-            print(f"  평균 MA25 대비 상승률: {df['price_above_ma25_pct'].mean():.2f}%")
-            print(f"  최대 MA25 대비 상승률: {df['price_above_ma25_pct'].max():.2f}%")
+            print(f"  평균 이격율: {df['price_above_ma25_pct'].mean():.2f}%")
+            print(f"  최소 이격율: {df['price_above_ma25_pct'].min():.2f}%")
             print(f"  평균 RSI: {df['rsi'].mean():.2f}")
             print(f"  평균 MACD: {df['macd'].mean():.2f}")
             print(f"  평균 거래량 비율: {df['volume_ratio'].mean():.2f}배")
