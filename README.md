@@ -159,7 +159,7 @@ python bnf_stock_screener3.py --config config.json --max-stocks 50
 ### 출력 파일
 
 #### JSON 파일
-`data/json/result_screener3_YYYYMMDD.json`
+`data/json/result_YYYYMMDD.json`
 
 ```json
 {
@@ -189,7 +189,7 @@ python bnf_stock_screener3.py --config config.json --max-stocks 50
 ```
 
 #### CSV 파일
-`data/csv/result_screener3_YYYYMMDD.csv`
+`data/csv/result_YYYYMMDD.csv`
 
 엑셀에서 열어서 확인 가능한 형식으로 저장됩니다.
 
@@ -326,7 +326,7 @@ python bnf_stock_back_test.py --from 20240101 --to 20241231
 python bnf_stock_screener3.py --config config.json
 
 # 결과 확인
-cat data/json/result_screener3_$(date +%Y%m%d).json
+cat data/json/result_$(date +%Y%m%d).json
 ```
 
 ## 주의사항

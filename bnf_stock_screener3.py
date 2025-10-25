@@ -566,7 +566,7 @@ class BNFStockScreener:
             os.makedirs('data/json', exist_ok=True)
             os.makedirs('data/csv', exist_ok=True)
 
-            json_filename = f"data/json/result_screener3_{self.last_trading_date}.json"
+            json_filename = f"data/json/result_{self.last_trading_date}.json"
 
             output_data = {
                 'screener_version': 3,
@@ -603,7 +603,7 @@ class BNFStockScreener:
 
             print(f"\nJSON 저장: {json_filename}")
 
-            csv_filename = f"data/csv/result_screener3_{self.last_trading_date}.csv"
+            csv_filename = f"data/csv/result_{self.last_trading_date}.csv"
             df = pd.DataFrame(results)
             df.insert(0, 'trading_date', self.last_trading_date)
             df.to_csv(csv_filename, index=False, encoding='utf-8-sig')
