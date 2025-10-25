@@ -538,10 +538,10 @@ class BNFStockScreener:
                 # Screener 3 선정 조건 검사
                 passed = True
 
-                # 1) 현재가격이 25일 이동평균선으로부터 20% 이상 상위
+                # 1) 현재가격이 25일 이동평균선보다 높을 것
                 if ma25:
                     price_above_ma25_pct = ((current_price - ma25) / ma25) * 100
-                    if price_above_ma25_pct < criteria.get('ma25_above_pct', 20):
+                    if price_above_ma25_pct < criteria.get('ma25_above_pct', 0):
                         passed = False
                 else:
                     passed = False
@@ -612,7 +612,7 @@ class BNFStockScreener:
                 'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'total_count': len(results),
                 'criteria': {
-                    'description': 'MA25 20% 이상 상위, RSI 과매도, MACD > 0'
+                    'description': 'MA25보다 상위, RSI 과매도, MACD > 0'
                 },
                 'selected_stocks': []
             }
@@ -667,7 +667,7 @@ def main():
      python bnf_stock_screener3.py --config config.json --from 20250101 --to 20250131
 
 Screener 3 선정 기준:
-  - 현재가격이 25일 이동평균선으로부터 20% 이상 상위
+  - 현재가격이 25일 이동평균선보다 상위
   - RSI 값이 과매도 상태 (기본값: RSI < 30)
   - MACD 값이 0보다 클 것
         '''
@@ -682,7 +682,7 @@ Screener 3 선정 기준:
     parser.add_argument('--to', dest='to_date', help='종료일 (YYYYMMDD)')
     parser.add_argument('--max-stocks', type=int, default=None, help='분석할 최대 종목 수')
     parser.add_argument('--no-cache', action='store_true', help='캐시 파일 사용 안함')
-    parser.add_argument('--ma25-above-pct', type=float, default=20.0, help='MA25 대비 최소 상승률 %% (기본값: 20%%)')
+    parser.add_argument('--ma25-above-pct', type=float, default=0.0, help='MA25 대비 최소 상승률 %% (기본값: 0%%, 즉 MA25보다 높으면 됨)')
     parser.add_argument('--rsi-oversold', type=int, default=30, help='RSI 과매도 기준 (기본값: 30)')
 
     args = parser.parse_args()
@@ -777,7 +777,10 @@ Screener 3 선정 기준:
 
     print("=" * 60)
     print("BNF 매매법 기준 (Screener 3):")
-    print(f"  - MA25 대비: {criteria['ma25_above_pct']}% 이상 상위")
+    if criteria['ma25_above_pct'] > 0:
+        print(f"  - MA25 대비: {criteria['ma25_above_pct']}% 이상 상위")
+    else:
+        print(f"  - MA25보다 상위")
     print(f"  - RSI: {criteria['rsi_oversold']} 미만 (과매도)")
     print(f"  - MACD: 0보다 큰 값")
     print("=" * 60)
