@@ -351,91 +351,53 @@ class BNFStockScreener:
 
     def calculate_trading_strategy(self, current_price, prices, high_prices, low_prices,
                                    ma25, atr, support, resistance):
-        """손절가/익절가 전략 계산 (ATR + 기술적 분석 복합)"""
+        """손절가/익절가 전략 계산 (MA25 기준)"""
         strategy = {
             'entry_price': current_price,
             'stop_loss': {},
             'take_profit': [],
             'support_line': support,
             'resistance_line': resistance,
-            'atr': atr
+            'atr': atr,
+            'ma25': ma25
         }
 
-        # 손절가 계산
-        atr_stop = current_price - (atr * 2) if atr else None
-        support_stop = support * 0.98 if support else None
-        ma_stop = ma25 * 0.97 if ma25 else None
-        fixed_stop = current_price * 0.95
+        # 손절가 계산: 매수가 대비 -3%
+        stop_loss_price = current_price * 0.97
+        stop_loss_pct = -3.0
 
-        stop_candidates = [
-            ('ATR 기반 (ATR × 2)', atr_stop),
-            ('기술적 지지선', support_stop),
-            ('MA25 기반', ma_stop),
-            ('고정 -5%', fixed_stop)
-        ]
+        strategy['stop_loss'] = {
+            'price': int(stop_loss_price),
+            'pct': round(stop_loss_pct, 2),
+            'reason': '매수가 대비 -3%'
+        }
 
-        valid_stops = [(name, price) for name, price in stop_candidates if price]
-        if valid_stops:
-            stop_loss_name, stop_loss_price = max(valid_stops, key=lambda x: x[1])
-            stop_loss_pct = ((stop_loss_price - current_price) / current_price) * 100
+        # 1차 익절가: MA25 도달 시
+        if ma25:
+            tp1_price = ma25
+            tp1_pct = ((tp1_price - current_price) / current_price) * 100
 
-            strategy['stop_loss'] = {
-                'price': int(stop_loss_price),
-                'pct': round(stop_loss_pct, 2),
-                'reason': stop_loss_name,
-                'alternatives': [
-                    {'method': name, 'price': int(price), 'pct': round(((price - current_price) / current_price) * 100, 2)}
-                    for name, price in valid_stops if price != stop_loss_price
-                ]
-            }
-
-        # 익절가 계산
-        if atr:
-            tp1_atr = current_price + (atr * 3)
-            tp2_atr = current_price + (atr * 5)
-        else:
-            tp1_atr = None
-            tp2_atr = None
-
-        tp_resistance = resistance * 0.99 if resistance and resistance > current_price else None
-
-        risk = abs(current_price - strategy['stop_loss']['price']) if strategy['stop_loss'] else current_price * 0.05
-        tp1_ratio = current_price + (risk * 2)
-        tp2_ratio = current_price + (risk * 3)
-
-        tp1_candidates = [
-            ('ATR × 3', tp1_atr),
-            ('손익비 2:1', tp1_ratio),
-            ('고정 +5%', current_price * 1.05)
-        ]
-        valid_tp1 = [(name, price) for name, price in tp1_candidates if price]
-        if valid_tp1:
-            tp1_name, tp1_price = min(valid_tp1, key=lambda x: x[1])
             strategy['take_profit'].append({
                 'level': 1,
                 'price': int(tp1_price),
-                'pct': round(((tp1_price - current_price) / current_price) * 100, 2),
-                'reason': tp1_name,
+                'pct': round(tp1_pct, 2),
+                'reason': 'MA25 도달',
                 'action': '50% 부분 익절'
             })
 
-        tp2_candidates = [
-            ('ATR × 5', tp2_atr),
-            ('저항선', tp_resistance),
-            ('손익비 3:1', tp2_ratio),
-            ('고정 +10%', current_price * 1.10)
-        ]
-        valid_tp2 = [(name, price) for name, price in tp2_candidates if price]
-        if valid_tp2:
-            tp2_name, tp2_price = min(valid_tp2, key=lambda x: x[1])
+            # 2차 익절가: MA25에서 +5% 이격
+            tp2_price = ma25 * 1.05
+            tp2_pct = ((tp2_price - current_price) / current_price) * 100
+
             strategy['take_profit'].append({
                 'level': 2,
                 'price': int(tp2_price),
-                'pct': round(((tp2_price - current_price) / current_price) * 100, 2),
-                'reason': tp2_name,
+                'pct': round(tp2_pct, 2),
+                'reason': 'MA25 +5% 이격',
                 'action': '잔량 전량 익절'
             })
 
+        # 손익비 계산
         if strategy['stop_loss'] and strategy['take_profit']:
             risk_amount = current_price - strategy['stop_loss']['price']
             reward_amount = strategy['take_profit'][0]['price'] - current_price
