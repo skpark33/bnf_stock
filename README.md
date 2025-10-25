@@ -116,7 +116,7 @@ python bnf_stock_screener3.py --config config.json --from 20250115
 
 ```bash
 # 2025년 1월 전체 분석
-python bnf_stock_screener3.py --config config.json --from 20250101 --to 20250131
+python bnf_stock_screener3.py --config config.json --from 20250801 --to 20250831
 ```
 
 #### 4. 이격율 조건 조정

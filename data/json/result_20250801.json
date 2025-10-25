@@ -1,0 +1,275 @@
+{
+  "screener_version": 3,
+  "trading_date": "20250801",
+  "generated_at": "2025-10-25 21:13:11",
+  "total_count": 6,
+  "criteria": {
+    "description": "MA25 이격율 -10% 이하, RSI 과매도, MACD > 0"
+  },
+  "selected_stocks": [
+    {
+      "code": "383220",
+      "name": "F&F",
+      "price": 67100,
+      "change_pct": -4.01,
+      "volume": 85566,
+      "volume_ratio": 1.23,
+      "ma25": 77388.0,
+      "price_above_ma25_pct": -13.29,
+      "rsi": 7.59,
+      "macd": 2283.74,
+      "macd_signal": -380.14,
+      "macd_hist": 2663.87,
+      "atr": 2678.57,
+      "trading_strategy": {
+        "entry_price": 67100,
+        "stop_loss": {
+          "price": 65087,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 77388,
+            "pct": 15.33,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 81257,
+            "pct": 21.1,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 66900,
+        "resistance_line": 83500,
+        "atr": 2678.5714285714284,
+        "ma25": 77388.0,
+        "risk_reward_ratio": 5.11
+      }
+    },
+    {
+      "code": "003030",
+      "name": "세아제강지주",
+      "price": 192100,
+      "change_pct": -4.9,
+      "volume": 13853,
+      "volume_ratio": 1.29,
+      "ma25": 221024.0,
+      "price_above_ma25_pct": -13.09,
+      "rsi": 25.19,
+      "macd": 1083.49,
+      "macd_signal": 2410.31,
+      "macd_hist": -1326.82,
+      "atr": 8357.14,
+      "trading_strategy": {
+        "entry_price": 192100,
+        "stop_loss": {
+          "price": 186337,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 221024,
+            "pct": 15.06,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 232075,
+            "pct": 20.81,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 191500,
+        "resistance_line": 237500,
+        "atr": 8357.142857142857,
+        "ma25": 221024.0,
+        "risk_reward_ratio": 5.02
+      }
+    },
+    {
+      "code": "298020",
+      "name": "효성티앤씨",
+      "price": 225500,
+      "change_pct": -4.45,
+      "volume": 23533,
+      "volume_ratio": 1.47,
+      "ma25": 254880.0,
+      "price_above_ma25_pct": -11.53,
+      "rsi": 17.19,
+      "macd": 2483.14,
+      "macd_signal": -2750.51,
+      "macd_hist": 5233.66,
+      "atr": 8500.0,
+      "trading_strategy": {
+        "entry_price": 225500,
+        "stop_loss": {
+          "price": 218735,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 254880,
+            "pct": 13.03,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 267624,
+            "pct": 18.68,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 225500,
+        "resistance_line": 273000,
+        "atr": 8500.0,
+        "ma25": 254880.0,
+        "risk_reward_ratio": 4.34
+      }
+    },
+    {
+      "code": "003240",
+      "name": "태광산업",
+      "price": 968000,
+      "change_pct": -3.68,
+      "volume": 1921,
+      "volume_ratio": 0.4,
+      "ma25": 1091000.0,
+      "price_above_ma25_pct": -11.27,
+      "rsi": 14.74,
+      "macd": 7583.17,
+      "macd_signal": -45712.16,
+      "macd_hist": 53295.32,
+      "atr": 47642.86,
+      "trading_strategy": {
+        "entry_price": 968000,
+        "stop_loss": {
+          "price": 938960,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 1091000,
+            "pct": 12.71,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 1145550,
+            "pct": 18.34,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 958000,
+        "resistance_line": 1292000,
+        "atr": 47642.857142857145,
+        "ma25": 1091000.0,
+        "risk_reward_ratio": 4.24
+      }
+    },
+    {
+      "code": "006260",
+      "name": "LS",
+      "price": 162000,
+      "change_pct": -6.52,
+      "volume": 254974,
+      "volume_ratio": 1.43,
+      "ma25": 181356.0,
+      "price_above_ma25_pct": -10.67,
+      "rsi": 23.53,
+      "macd": 611.53,
+      "macd_signal": -6044.29,
+      "macd_hist": 6655.82,
+      "atr": 6850.0,
+      "trading_strategy": {
+        "entry_price": 162000,
+        "stop_loss": {
+          "price": 157140,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 181356,
+            "pct": 11.95,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 190423,
+            "pct": 17.55,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 161000,
+        "resistance_line": 195600,
+        "atr": 6850.0,
+        "ma25": 181356.0,
+        "risk_reward_ratio": 3.98
+      }
+    },
+    {
+      "code": "375500",
+      "name": "DL이앤씨",
+      "price": 43900,
+      "change_pct": -6.89,
+      "volume": 547530,
+      "volume_ratio": 1.68,
+      "ma25": 48952.0,
+      "price_above_ma25_pct": -10.32,
+      "rsi": 21.93,
+      "macd": 622.28,
+      "macd_signal": 213.1,
+      "macd_hist": 409.18,
+      "atr": 1732.14,
+      "trading_strategy": {
+        "entry_price": 43900,
+        "stop_loss": {
+          "price": 42583,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 48952,
+            "pct": 11.51,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 51399,
+            "pct": 17.08,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 43600,
+        "resistance_line": 51800,
+        "atr": 1732.142857142857,
+        "ma25": 48952.0,
+        "risk_reward_ratio": 3.84
+      }
+    }
+  ]
+}
