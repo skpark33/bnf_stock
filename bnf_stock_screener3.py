@@ -590,8 +590,13 @@ class BNFStockScreener:
                             curr_diff = curr_rsi - curr_rsi_signal
                             rsi_max_threshold = criteria.get('rsi_oversold', 30)
 
-                            if not (curr_rsi <= rsi_max_threshold and prev_rsi <= rsi_max_threshold and prev_diff <= 0 and curr_diff > 0):
+                            if not (prev_rsi <= rsi_max_threshold and curr_rsi > prev_rsi and prev_diff <= 0 and curr_diff > 0):
                                 passed = False
+                                print(
+                                    f"RSI 조건 실패 -> prev_rsi: {prev_rsi:.2f}, curr_rsi: {curr_rsi:.2f}, "
+                                    f"prev_signal: {prev_rsi_signal:.2f}, curr_signal: {curr_rsi_signal:.2f}, "
+                                    f"threshold: {rsi_max_threshold}, prev_diff: {prev_diff:.2f}, curr_diff: {curr_diff:.2f}"
+                                )
                     else:
                         passed = False
 
@@ -801,13 +806,14 @@ Screener 3 선정 기준:
     parser.add_argument('--to', dest='to_date', help='종료일 (YYYYMMDD)')
     parser.add_argument('--max-stocks', type=int, default=None, help='분석할 최대 종목 수')
     parser.add_argument('--no-cache', action='store_true', help='캐시 파일 사용 안함')
-    parser.add_argument('--ma25-deviation-max', type=float, default=-10.0, help='MA25 이격율 최댓값 %% (기본값: -10%%, 즉 MA25보다 10%% 이상 낮아야 함)')
+    parser.add_argument('--ma25', type=float, default=-10.0, help='MA25 이격율 최댓값 %% (기본값: -10%%, 즉 MA25보다 10%% 이상 낮아야 함)')
     parser.add_argument('--rsi-oversold', type=float, default=30.0, help='RSI 최대값 (기본값: 30)')
     parser.add_argument('--volume', type=float, help='전일 대비 거래량 증가율 임계값 (예: 150 = 150%%, 200 = 200%%)')
     parser.add_argument('--refresh', action='store_true', help='저장된 API 데이터를 무시하고 새로 수집')
     parser.add_argument('--no-macd', action='store_true', help='MACD 조건을 사용하지 않음')
     parser.add_argument('--no-rsi', action='store_true', help='RSI 조건을 사용하지 않음')
     parser.add_argument('--no-ma25', action='store_true', help='MA25 이격율 조건을 사용하지 않음')
+    parser.add_argument('--del-olddata', action='store_true', help='data/json 및 data/csv 기존 파일 삭제 후 시작')
 
     args = parser.parse_args()
 
@@ -882,6 +888,19 @@ Screener 3 선정 기준:
         if os.path.exists(cache_filename) and os.path.exists('kospi_200_code.json'):
             skip_api_init = True
 
+    if args.del_olddata:
+        for folder, pattern in [('data/json', '*.json'), ('data/csv', '*.csv')]:
+            folder_path = os.path.join(folder)
+            if os.path.exists(folder_path):
+                for file_name in os.listdir(folder_path):
+                    if file_name.endswith(('.json', '.csv')):
+                        file_path = os.path.join(folder_path, file_name)
+                        try:
+                            os.remove(file_path)
+                            print(f"🧹 삭제: {file_path}")
+                        except Exception as e:
+                            print(f"⚠️ 삭제 실패: {file_path} -> {e}")
+
     try:
         print(f"\n입력받은 값:")
         print(f"  APP_KEY 길이: {len(app_key)}")
@@ -922,7 +941,7 @@ Screener 3 선정 기준:
 
     # 선정 기준 설정 (Screener 3)
     criteria = {
-        'ma25_deviation_max': args.ma25_deviation_max,
+        'ma25_deviation_max': args.ma25,
         'rsi_oversold': args.rsi_oversold,
         'volume_increase_pct': args.volume,
         'enable_macd': not args.no_macd,

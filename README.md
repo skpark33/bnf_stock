@@ -100,13 +100,14 @@ bnf_stock/
 | `--to` | 종료일 (YYYYMMDD) | - |
 | `--max-stocks` | 분석할 최대 종목 수 | 전체 |
 | `--no-cache` | 캐시 파일 사용 안함 | false |
-| `--ma25-deviation-max` | MA25 이격율 최댓값 (%) | -10.0 |
+| `--ma25` | MA25 이격율 최댓값 (%) | -10.0 |
 | `--rsi-oversold` | RSI 최대값 (RSI14가 RSI9(시그널)을 상향 돌파할 때) | 30.0 |
 | `--volume` | 전일 대비 거래량 증가율 기준 (%) | - |
 | `--refresh` | 저장된 API 데이터를 무시하고 새로 수집 | false |
 | `--no-macd` | MACD 조건 제외 | false |
 | `--no-rsi` | RSI 조건 제외 | false |
 | `--no-ma25` | MA25 이격율 조건 제외 | false |
+| `--del-olddata` | 실행 전 `data/json`·`data/csv` 파일 삭제 | false |
 
 ### 사용 예시
 
@@ -133,10 +134,10 @@ python bnf_stock_screener3.py --config config.json --from 20250801 --to 20250831
 
 ```bash
 # 이격율 -15% 이하로 더 엄격하게
-python bnf_stock_screener3.py --config config.json --ma25-deviation-max -15
+python bnf_stock_screener3.py --config config.json --ma25 -15
 
 # 이격율 -5% 이하로 완화
-python bnf_stock_screener3.py --config config.json --ma25-deviation-max -5
+python bnf_stock_screener3.py --config config.json --ma25 -5
 ```
 
 #### 5. RSI 조건 조정
@@ -174,6 +175,9 @@ python bnf_stock_screener3.py --config config.json --no-rsi
 
 # MA25 이격율 조건을 제외하고 선정
 python bnf_stock_screener3.py --config config.json --no-ma25
+
+# 기존 결과 데이터를 삭제하고 새로 실행
+python bnf_stock_screener3.py --config config.json --del-olddata
 ```
 
 #### 6. 명령줄에서 직접 인증 정보 입력
@@ -347,7 +351,7 @@ python bnf_stock_back_test.py --from 20240101 --to 20241231
 python bnf_stock_screener3.py \
   --config config.json \
   --from 20240101 --to 20241231 \
-  --ma25-deviation-max -15
+  --ma25 -15
 
 python bnf_stock_back_test.py --from 20240101 --to 20241231
 
@@ -355,7 +359,7 @@ python bnf_stock_back_test.py --from 20240101 --to 20241231
 python bnf_stock_screener3.py \
   --config config.json \
   --from 20240101 --to 20241231 \
-  --ma25-deviation-max -5
+  --ma25 -5
 
 python bnf_stock_back_test.py --from 20240101 --to 20241231
 ```
