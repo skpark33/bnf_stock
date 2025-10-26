@@ -1,0 +1,195 @@
+{
+  "screener_version": 3,
+  "trading_date": "20250818",
+  "generated_at": "2025-10-26 11:05:58",
+  "total_count": 4,
+  "criteria": {
+    "description": "MA25 이격율 -10% 이하, RSI 30 이하 상향 돌파, MACD(12,26) 상향 돌파"
+  },
+  "selected_stocks": [
+    {
+      "code": "032830",
+      "name": "삼성생명",
+      "price": 127500.0,
+      "change_pct": -0.78,
+      "volume": 313241,
+      "volume_ratio": 1.34,
+      "ma25": 128328.0,
+      "price_above_ma25_pct": -0.65,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": -262.29,
+      "macd_signal": -332.71,
+      "macd_hist": 70.42,
+      "atr": 3328.57,
+      "trading_strategy": {
+        "entry_price": 127500.0,
+        "stop_loss": {
+          "price": 123675,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 128328,
+            "pct": 0.65,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 134744,
+            "pct": 5.68,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 117000.0,
+        "resistance_line": 135600.0,
+        "atr": 3328.5714285714284,
+        "ma25": 128328.0,
+        "risk_reward_ratio": 0.22
+      }
+    },
+    {
+      "code": "032640",
+      "name": "LG유플러스",
+      "price": 15290.0,
+      "change_pct": 2.55,
+      "volume": 1723972,
+      "volume_ratio": 1.85,
+      "ma25": 14772.4,
+      "price_above_ma25_pct": 3.5,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 156.84,
+      "macd_signal": 136.59,
+      "macd_hist": 20.25,
+      "atr": 364.64,
+      "trading_strategy": {
+        "entry_price": 15290.0,
+        "stop_loss": {
+          "price": 14831,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 14772,
+            "pct": -3.39,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 15511,
+            "pct": 1.45,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 13880.0,
+        "resistance_line": 15400.0,
+        "atr": 364.64285714285717,
+        "ma25": 14772.4,
+        "risk_reward_ratio": -1.13
+      }
+    },
+    {
+      "code": "081660",
+      "name": "미스토홀딩스",
+      "price": 38600.0,
+      "change_pct": 5.46,
+      "volume": 565524,
+      "volume_ratio": 4.36,
+      "ma25": 36846.0,
+      "price_above_ma25_pct": 4.76,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 209.39,
+      "macd_signal": 136.97,
+      "macd_hist": 72.42,
+      "atr": 1032.14,
+      "trading_strategy": {
+        "entry_price": 38600.0,
+        "stop_loss": {
+          "price": 37442,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 36846,
+            "pct": -4.54,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 38688,
+            "pct": 0.23,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 35400.0,
+        "resistance_line": 39600.0,
+        "atr": 1032.142857142857,
+        "ma25": 36846.0,
+        "risk_reward_ratio": -1.51
+      }
+    },
+    {
+      "code": "010060",
+      "name": "OCI홀딩스",
+      "price": 105700.0,
+      "change_pct": 7.42,
+      "volume": 293597,
+      "volume_ratio": 1.27,
+      "ma25": 95264.0,
+      "price_above_ma25_pct": 10.95,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 4322.53,
+      "macd_signal": 4230.34,
+      "macd_hist": 92.2,
+      "atr": 4996.43,
+      "trading_strategy": {
+        "entry_price": 105700.0,
+        "stop_loss": {
+          "price": 102529,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 95264,
+            "pct": -9.87,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 100027,
+            "pct": -5.37,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 87200.0,
+        "resistance_line": 107400.0,
+        "atr": 4996.428571428572,
+        "ma25": 95264.0,
+        "risk_reward_ratio": -3.29
+      }
+    }
+  ]
+}

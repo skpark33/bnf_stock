@@ -17,6 +17,7 @@ class BNFBacktester:
         """백테스터 초기화"""
         self.selected_stocks = []
         self.config = None
+        self.excluded_records = []
 
         if config_file:
             self._load_config(config_file)
@@ -100,7 +101,7 @@ class BNFBacktester:
                     return None
         return None
 
-    def simulate_trading(self, stock_info, tp1_ratio=0.5, tp2_ratio=0.5):
+    def simulate_trading(self, stock_info, tp1_ratio=0.5, tp2_ratio=0.5, exclude_minus_price=False):
         """개별 종목 매매 시뮬레이션"""
         code = stock_info['code']
         name = stock_info['name']
@@ -126,6 +127,20 @@ class BNFBacktester:
             # 데이터가 없으면 스킵
             print(f"  ⚠️  {name} ({code}): {start_date_str}~{end_date_str} 데이터 없음")
             return None
+
+        # 다음날 시가가 진입가보다 낮은 경우 제외 옵션 처리
+        if exclude_minus_price:
+            first_open = df.iloc[0]['시가'] if '시가' in df.columns else None
+            if first_open is not None and first_open < entry_price:
+                print(f"  ⏭️  {name} ({code}): 다음날 시가({first_open}) < 진입가({entry_price}) → 제외")
+                self.excluded_records.append({
+                    'code': code,
+                    'name': name,
+                    'trading_date': trading_date,
+                    'next_open': first_open,
+                    'entry_price': entry_price
+                })
+                return None
 
         # 매매 시뮬레이션 변수
         position = 1.0  # 보유 비율 (100%)
@@ -213,7 +228,7 @@ class BNFBacktester:
 
         return result
 
-    def run_backtest(self, tp1_ratio=0.5, tp2_ratio=0.5):
+    def run_backtest(self, tp1_ratio=0.5, tp2_ratio=0.5, exclude_minus_price=False):
         """전체 백테스팅 실행"""
         print("=" * 60)
         print("백테스팅 시작...")
@@ -221,12 +236,18 @@ class BNFBacktester:
 
         results = []
         total = len(self.selected_stocks)
+        self.excluded_records = []
 
         for idx, stock_info in enumerate(self.selected_stocks, 1):
             if idx % 10 == 0:
                 print(f"진행중: {idx}/{total} ({idx/total*100:.1f}%)")
 
-            result = self.simulate_trading(stock_info, tp1_ratio, tp2_ratio)
+            result = self.simulate_trading(
+                stock_info,
+                tp1_ratio,
+                tp2_ratio,
+                exclude_minus_price=exclude_minus_price
+            )
 
             if result:
                 results.append(result)
@@ -335,6 +356,17 @@ class BNFBacktester:
             print(f"{row['종목명']} ({row['종목코드']}): {row['순이익률(%)']:+.2f}% - {row['청산사유']}")
         print("=" * 60)
 
+        # 제외된 종목 정보 출력
+        if self.excluded_records:
+            print("\n제외된 종목 (다음날 시가 < 진입가):")
+            print("-" * 60)
+            for record in self.excluded_records:
+                print(
+                    f"{record['name']} ({record['code']}): 선정일 {record['trading_date']} | "
+                    f"진입가 {record['entry_price']} → 다음날 시가 {record['next_open']}"
+                )
+            print("=" * 60)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -353,6 +385,7 @@ def main():
     parser.add_argument('--to', dest='to_date', required=True, help='종료일 (YYYYMMDD) - 필수')
     parser.add_argument('--tp1-ratio', type=float, default=50.0, help='1차 익절 비율 (%%)')
     parser.add_argument('--tp2-ratio', type=float, default=50.0, help='2차 익절 비율 (%%)')
+    parser.add_argument('--exclude-minus-price', action='store_true', help='다음날 시가가 진입가격보다 낮으면 백테스트에서 제외')
 
     args = parser.parse_args()
 
@@ -395,7 +428,11 @@ def main():
         sys.exit(1)
 
     # 백테스팅 실행
-    results = backtester.run_backtest(tp1_ratio=args.tp1_ratio / 100.0, tp2_ratio=args.tp2_ratio / 100.0)
+    results = backtester.run_backtest(
+        tp1_ratio=args.tp1_ratio / 100.0,
+        tp2_ratio=args.tp2_ratio / 100.0,
+        exclude_minus_price=args.exclude_minus_price
+    )
 
     # 결과 저장
     if results:

@@ -1,0 +1,57 @@
+{
+  "screener_version": 3,
+  "trading_date": "20250820",
+  "generated_at": "2025-10-26 11:05:59",
+  "total_count": 1,
+  "criteria": {
+    "description": "MA25 이격율 -10% 이하, RSI 30 이하 상향 돌파, MACD(12,26) 상향 돌파"
+  },
+  "selected_stocks": [
+    {
+      "code": "018880",
+      "name": "한온시스템",
+      "price": 3630.0,
+      "change_pct": 6.45,
+      "volume": 6671156,
+      "volume_ratio": 2.96,
+      "ma25": 3332.2,
+      "price_above_ma25_pct": 8.94,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 61.94,
+      "macd_signal": 53.03,
+      "macd_hist": 8.91,
+      "atr": 209.29,
+      "trading_strategy": {
+        "entry_price": 3630.0,
+        "stop_loss": {
+          "price": 3521,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 3332,
+            "pct": -8.2,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 3498,
+            "pct": -3.61,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 3105.0,
+        "resistance_line": 3990.0,
+        "atr": 209.28571428571428,
+        "ma25": 3332.2,
+        "risk_reward_ratio": -2.73
+      }
+    }
+  ]
+}

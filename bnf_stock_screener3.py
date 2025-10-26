@@ -14,11 +14,12 @@ warnings.filterwarnings('ignore')
 class KISAPIClient:
     """한국투자증권 API 클라이언트"""
 
-    def __init__(self, app_key, app_secret, account_no, mock=False, use_pykrx_for_historical=False):
+    def __init__(self, app_key, app_secret, account_no, mock=False, use_pykrx_for_historical=False, skip_api_init=False):
         self.app_key = app_key
         self.app_secret = app_secret
         self.account_no = account_no
         self.use_pykrx_for_historical = use_pykrx_for_historical
+        self.skip_api_init = skip_api_init
 
         if mock:
             self.base_url = "https://openapivts.koreainvestment.com:29443"
@@ -37,6 +38,10 @@ class KISAPIClient:
 
         if use_pykrx_for_historical:
             print("📊 과거 데이터 분석 모드 (pykrx 사용)")
+
+        if skip_api_init:
+            print("🚫 API 토큰 요청 생략 (캐시 데이터 사용)")
+            return
 
         self._get_access_token()
 
@@ -252,52 +257,21 @@ class BNFStockScreener:
 
     def calculate_macd(self, prices, fast=12, slow=26, signal=9):
         """MACD 계산
-        Returns: (MACD Line, Signal Line, Histogram)
+        Returns: (MACD Line, Signal Line, Histogram, MACD Series, Signal Series)
         """
-        if len(prices) < slow:
-            return None, None, None
+        if len(prices) < slow + signal:
+            return None, None, None, None, None
 
-        # EMA 계산을 위한 함수
-        def calc_ema_series(data, period):
-            ema_values = []
-            multiplier = 2 / (period + 1)
+        price_series = pd.Series(prices)
+        macd_series = price_series.ewm(span=fast, adjust=False).mean() - price_series.ewm(span=slow, adjust=False).mean()
+        signal_series = macd_series.ewm(span=signal, adjust=False).mean()
+        histogram_series = macd_series - signal_series
 
-            # 첫 EMA는 SMA로 시작
-            sma = sum(data[:period]) / period
-            ema_values.append(sma)
+        macd_line = macd_series.iloc[-1]
+        signal_line = signal_series.iloc[-1]
+        histogram = histogram_series.iloc[-1]
 
-            # 이후 EMA 계산
-            for i in range(period, len(data)):
-                ema = (data[i] - ema_values[-1]) * multiplier + ema_values[-1]
-                ema_values.append(ema)
-
-            return ema_values
-
-        # 12일 EMA와 26일 EMA 계산
-        ema_fast = calc_ema_series(prices, fast)
-        ema_slow = calc_ema_series(prices, slow)
-
-        if not ema_fast or not ema_slow or len(ema_fast) < len(ema_slow):
-            return None, None, None
-
-        # MACD Line = 12 EMA - 26 EMA
-        macd_line_values = [ema_fast[i + (fast - slow)] - ema_slow[i] for i in range(len(ema_slow))]
-
-        if len(macd_line_values) < signal:
-            return None, None, None
-
-        # Signal Line = MACD Line의 9일 EMA
-        signal_line_values = calc_ema_series(macd_line_values, signal)
-
-        if not signal_line_values:
-            return None, None, None
-
-        # 현재 값들 (가장 최근)
-        macd_line = macd_line_values[-1]
-        signal_line = signal_line_values[-1]
-        histogram = macd_line - signal_line
-
-        return macd_line, signal_line, histogram
+        return macd_line, signal_line, histogram, macd_series.tolist(), signal_series.tolist()
 
     def calculate_rsi(self, prices, period=14):
         """RSI 계산"""
@@ -353,6 +327,24 @@ class BNFStockScreener:
             rsi_values.append(rsi)
 
         return rsi_values
+
+    def calculate_rsi_signal_series(self, rsi_values, signal_period=9):
+        """RSI 시그널(EMA) 시계열 계산"""
+        if not rsi_values or len(rsi_values) < signal_period:
+            return None
+
+        signal_series = [None] * (signal_period - 1)
+        initial_sma = sum(rsi_values[:signal_period]) / signal_period
+        signal_series.append(initial_sma)
+
+        multiplier = 2 / (signal_period + 1)
+        ema = initial_sma
+
+        for value in rsi_values[signal_period:]:
+            ema = (value - ema) * multiplier + ema
+            signal_series.append(ema)
+
+        return signal_series
 
     def calculate_atr(self, high_prices, low_prices, close_prices, period=14):
         """ATR (Average True Range) 계산"""
@@ -442,7 +434,7 @@ class BNFStockScreener:
 
         return strategy
 
-    def screen_stocks(self, stock_codes, criteria, max_stocks=None, save_progress=True, use_historical=False):
+    def screen_stocks(self, stock_codes, criteria, max_stocks=None, save_progress=True, use_historical=False, historical_data=None):
         """BNF 기준으로 종목 선정 (Screener 3 버전)"""
         results = []
         total = len(stock_codes)
@@ -467,24 +459,44 @@ class BNFStockScreener:
                     stock_code = stock_info
                     stock_name = None
 
+                prev_volume = None
                 if use_historical:
-                    time.sleep(0.1)
+                    if historical_data is not None and stock_code in historical_data:
+                        data_entry = historical_data[stock_code]
+                        prices = data_entry['prices']
+                        high_prices = data_entry['high_prices']
+                        low_prices = data_entry['low_prices']
+                        volumes = data_entry['volumes']
+                        stock_name = data_entry.get('name', stock_name) or stock.get_market_ticker_name(stock_code)
+                    else:
+                        time.sleep(0.1)
 
-                    end_date = self.last_trading_date
-                    start_date = (datetime.strptime(end_date, "%Y%m%d") - timedelta(days=90)).strftime("%Y%m%d")
+                        end_date = self.last_trading_date
+                        start_date = (datetime.strptime(end_date, "%Y%m%d") - timedelta(days=90)).strftime("%Y%m%d")
 
-                    df = self.api.get_historical_data_pykrx(stock_code, start_date, end_date)
-                    if df is None or df.empty or len(df) < 30:
-                        continue
+                        df = self.api.get_historical_data_pykrx(stock_code, start_date, end_date)
+                        if df is None or df.empty or len(df) < 30:
+                            continue
 
-                    prices = df['종가'].tolist()
-                    high_prices = df['고가'].tolist()
-                    low_prices = df['저가'].tolist()
-                    volumes = df['거래량'].tolist()
+                        prices = [float(p) for p in df['종가'].tolist()]
+                        high_prices = [float(p) for p in df['고가'].tolist()]
+                        low_prices = [float(p) for p in df['저가'].tolist()]
+                        volumes = [int(v) for v in df['거래량'].tolist()]
+
+                        if historical_data is not None:
+                            historical_data[stock_code] = {
+                                'prices': prices,
+                                'high_prices': high_prices,
+                                'low_prices': low_prices,
+                                'volumes': volumes,
+                                'name': stock_name or stock.get_market_ticker_name(stock_code)
+                            }
 
                     current_price = prices[-1]
                     prev_price = prices[-2] if len(prices) >= 2 else prices[-1]
                     volume = volumes[-1]
+                    if len(volumes) >= 2:
+                        prev_volume = volumes[-2]
 
                     if not stock_name:
                         stock_name = stock.get_market_ticker_name(stock_code)
@@ -521,11 +533,15 @@ class BNFStockScreener:
                     if len(prices) < 30:
                         continue
 
+                    if len(volumes) >= 2:
+                        prev_volume = volumes[-2]
+
                 # 기술적 지표 계산
                 ma25 = self.calculate_moving_average(prices, 25)
-                rsi = self.calculate_rsi(prices, 14)
-                rsi_series = self.calculate_rsi_series(prices, 14)
-                macd_line, signal_line, macd_hist = self.calculate_macd(prices)
+                rsi = self.calculate_rsi(prices, 14) if criteria.get('enable_rsi', True) else None
+                rsi_series = self.calculate_rsi_series(prices, 14) if criteria.get('enable_rsi', True) else None
+                rsi_signal_series = self.calculate_rsi_signal_series(rsi_series, signal_period=9) if (criteria.get('enable_rsi', True) and rsi_series) else None
+                macd_line, signal_line, macd_hist, macd_series, macd_signal_series = self.calculate_macd(prices)
                 atr = self.calculate_atr(high_prices, low_prices, prices, 14)
                 support, resistance = self.calculate_support_resistance(high_prices, low_prices, prices, 20)
 
@@ -533,38 +549,76 @@ class BNFStockScreener:
 
                 avg_volume = sum(volumes[-20:]) / 20 if len(volumes) >= 20 else volumes[0]
                 volume_ratio = volume / avg_volume if avg_volume > 0 else 0
+                volume_increase_pct_val = None
+                if prev_volume and prev_volume > 0:
+                    volume_increase_pct_val = (volume / prev_volume) * 100
 
                 # Screener 3 선정 조건 검사
                 passed = True
                 prev_rsi = None
                 curr_rsi = None
+                prev_rsi_signal = None
+                curr_rsi_signal = None
+                prev_macd = None
+                curr_macd = None
+                prev_macd_signal = None
+                curr_macd_signal = None
 
-                # 1) MA25 이격율이 -10% 이하일 것 (현재가가 MA25보다 10% 이상 낮을 것)
-                if ma25:
-                    price_above_ma25_pct = ((current_price - ma25) / ma25) * 100
-                    if price_above_ma25_pct > criteria.get('ma25_deviation_max', -10):
+                # 1) MA25 이격율 조건
+                if criteria.get('enable_ma25', True):
+                    if ma25:
+                        price_above_ma25_pct = ((current_price - ma25) / ma25) * 100
+                        if price_above_ma25_pct > criteria.get('ma25_deviation_max', -10):
+                            passed = False
+                    else:
                         passed = False
                 else:
-                    passed = False
+                    price_above_ma25_pct = ((current_price - ma25) / ma25) * 100 if ma25 else None
 
                 # 2) RSI 과매도 상태에서 매수 신호 (RSI 상승 전환)
-                if rsi_series and len(rsi_series) >= 2:
-                    prev_rsi = rsi_series[-2]
-                    curr_rsi = rsi_series[-1]
-                    rsi_oversold_threshold = criteria.get('rsi_oversold', 30)
+                if criteria.get('enable_rsi', True):
+                    if rsi_series and len(rsi_series) >= 2 and rsi_signal_series and len(rsi_signal_series) >= 2:
+                        prev_rsi = rsi_series[-2]
+                        curr_rsi = rsi_series[-1]
+                        prev_rsi_signal = rsi_signal_series[-2]
+                        curr_rsi_signal = rsi_signal_series[-1]
 
-                    # 이전 RSI가 과매도 상태이고, 현재 RSI가 상승 전환한 경우
-                    if not (prev_rsi < rsi_oversold_threshold and curr_rsi > prev_rsi):
-                        passed = False
-                else:
-                    passed = False
+                        if prev_rsi_signal is None or curr_rsi_signal is None:
+                            passed = False
+                        else:
+                            prev_diff = prev_rsi - prev_rsi_signal
+                            curr_diff = curr_rsi - curr_rsi_signal
+                            rsi_max_threshold = criteria.get('rsi_oversold', 30)
 
-                # 3) MACD 값이 0보다 클 것
-                if macd_line is not None:
-                    if macd_line <= 0:
+                            if not (curr_rsi <= rsi_max_threshold and prev_rsi <= rsi_max_threshold and prev_diff <= 0 and curr_diff > 0):
+                                passed = False
+                    else:
                         passed = False
-                else:
-                    passed = False
+
+                # 3) MACD(12,26)가 MACD(9) 시그널을 상향 돌파할 것 (옵션 사용 시)
+                if criteria.get('enable_macd', True):
+                    if macd_series and macd_signal_series and len(macd_series) >= 2 and len(macd_signal_series) >= 2:
+                        prev_macd = macd_series[-2]
+                        curr_macd = macd_series[-1]
+                        prev_macd_signal = macd_signal_series[-2]
+                        curr_macd_signal = macd_signal_series[-1]
+
+                        prev_macd_diff = prev_macd - prev_macd_signal
+                        curr_macd_diff = curr_macd - curr_macd_signal
+
+                        if not (prev_macd_diff <= 0 and curr_macd_diff > 0):
+                            passed = False
+                    else:
+                        passed = False
+
+                # 4) 거래량 조건 (옵션 사용 시)
+                volume_increase_threshold = criteria.get('volume_increase_pct')
+                if volume_increase_threshold is not None:
+                    if volume_increase_pct_val is None:
+                        passed = False
+                    else:
+                        if volume_increase_pct_val < volume_increase_threshold:
+                            passed = False
 
                 if passed:
                     trading_strategy = self.calculate_trading_strategy(
@@ -579,20 +633,48 @@ class BNFStockScreener:
                         'price_change_pct': round(price_change_pct, 2),
                         'volume': volume,
                         'volume_ratio': round(volume_ratio, 2),
+                        'prev_volume': prev_volume,
+                        'volume_increase_pct': round(volume_increase_pct_val, 2) if volume_increase_pct_val is not None else None,
                         'ma25': round(ma25, 2) if ma25 else None,
-                        'price_above_ma25_pct': round(price_above_ma25_pct, 2) if ma25 else None,
+                        'price_above_ma25_pct': round(price_above_ma25_pct, 2) if price_above_ma25_pct is not None else None,
                         'rsi': round(rsi, 2) if rsi else None,
                         'prev_rsi': round(prev_rsi, 2) if prev_rsi is not None else None,
                         'curr_rsi': round(curr_rsi, 2) if curr_rsi is not None else None,
+                        'prev_rsi_signal': round(prev_rsi_signal, 2) if prev_rsi_signal is not None else None,
+                        'curr_rsi_signal': round(curr_rsi_signal, 2) if curr_rsi_signal is not None else None,
                         'macd': round(macd_line, 2) if macd_line is not None else None,
                         'macd_signal': round(signal_line, 2) if signal_line is not None else None,
+                        'prev_macd': round(prev_macd, 2) if prev_macd is not None else None,
+                        'curr_macd': round(curr_macd, 2) if curr_macd is not None else None,
+                        'prev_macd_signal': round(prev_macd_signal, 2) if prev_macd_signal is not None else None,
+                        'curr_macd_signal': round(curr_macd_signal, 2) if curr_macd_signal is not None else None,
                         'macd_hist': round(macd_hist, 2) if macd_hist is not None else None,
                         'atr': round(atr, 2) if atr else None,
                         'trading_strategy': trading_strategy
                     }
                     results.append(result)
-                    rsi_change = curr_rsi - prev_rsi if (curr_rsi and prev_rsi) else 0
-                    print(f"✓ 선정: {stock_name} ({stock_code}) - 이격율: {price_above_ma25_pct:.2f}%, RSI: {prev_rsi:.2f}→{curr_rsi:.2f} (+{rsi_change:.2f}), MACD: {macd_line:.2f}")
+                    rsi_change = (curr_rsi - prev_rsi) if (curr_rsi is not None and prev_rsi is not None) else 0
+                    volume_log = ""
+                    if volume_increase_pct_val is not None:
+                        volume_log = f", 거래량: {volume_increase_pct_val:.1f}%"
+                    signal_log = ""
+                    if criteria.get('enable_rsi', True) and prev_rsi_signal is not None and curr_rsi_signal is not None:
+                        signal_log = f", RSI 시그널: {prev_rsi_signal:.2f}→{curr_rsi_signal:.2f}"
+                macd_log = ""
+                if criteria.get('enable_macd', True):
+                    if prev_macd is not None and curr_macd is not None and prev_macd_signal is not None and curr_macd_signal is not None:
+                        macd_log = f", MACD: {prev_macd:.2f}→{curr_macd:.2f} / 시그널: {prev_macd_signal:.2f}→{curr_macd_signal:.2f}"
+                    elif macd_line is not None:
+                        macd_log = f", MACD: {macd_line:.2f}"
+                rsi_log = ""
+                if criteria.get('enable_rsi', True) and prev_rsi is not None and curr_rsi is not None:
+                    rsi_log = f", RSI: {prev_rsi:.2f}→{curr_rsi:.2f} (+{rsi_change:.2f})"
+                ma25_text = ""
+                if price_above_ma25_pct is not None:
+                    ma25_text = f"이격율: {price_above_ma25_pct:.2f}%"
+                else:
+                    ma25_text = "이격율: N/A"
+                print(f"✓ 선정: {stock_name} ({stock_code}) - {ma25_text}{rsi_log}{signal_log}{macd_log}{volume_log}")
 
             except Exception as e:
                 continue
@@ -606,6 +688,29 @@ class BNFStockScreener:
             self._save_results(results)
 
         return results
+
+    @staticmethod
+    def load_api_cache(cache_path):
+        """저장된 API 데이터를 로드"""
+        if not os.path.exists(cache_path):
+            return {}
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"⚠️ 캐시 로드 실패: {e}. 새로 데이터를 수집합니다.")
+            return {}
+
+    @staticmethod
+    def save_api_cache(cache_path, cache_data):
+        """API 데이터를 캐시에 저장"""
+        try:
+            os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                json.dump(cache_data, f, ensure_ascii=False)
+            print(f"✓ API 데이터 캐시 저장: {cache_path}")
+        except Exception as e:
+            print(f"⚠️ API 데이터 캐시 저장 실패: {e}")
 
     def _save_results(self, results):
         """결과를 JSON 파일로 저장"""
@@ -621,7 +726,7 @@ class BNFStockScreener:
                 'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 'total_count': len(results),
                 'criteria': {
-                    'description': 'MA25 이격율 -10% 이하, RSI 과매도 매수 신호, MACD > 0'
+                    'description': 'MA25 이격율 -10% 이하, RSI 30 이하 상향 돌파, MACD(12,26) 상향 돌파'
                 },
                 'selected_stocks': []
             }
@@ -697,7 +802,12 @@ Screener 3 선정 기준:
     parser.add_argument('--max-stocks', type=int, default=None, help='분석할 최대 종목 수')
     parser.add_argument('--no-cache', action='store_true', help='캐시 파일 사용 안함')
     parser.add_argument('--ma25-deviation-max', type=float, default=-10.0, help='MA25 이격율 최댓값 %% (기본값: -10%%, 즉 MA25보다 10%% 이상 낮아야 함)')
-    parser.add_argument('--rsi-oversold', type=int, default=30, help='RSI 과매도 기준 (기본값: 30)')
+    parser.add_argument('--rsi-oversold', type=float, default=30.0, help='RSI 최대값 (기본값: 30)')
+    parser.add_argument('--volume', type=float, help='전일 대비 거래량 증가율 임계값 (예: 150 = 150%%, 200 = 200%%)')
+    parser.add_argument('--refresh', action='store_true', help='저장된 API 데이터를 무시하고 새로 수집')
+    parser.add_argument('--no-macd', action='store_true', help='MACD 조건을 사용하지 않음')
+    parser.add_argument('--no-rsi', action='store_true', help='RSI 조건을 사용하지 않음')
+    parser.add_argument('--no-ma25', action='store_true', help='MA25 이격율 조건을 사용하지 않음')
 
     args = parser.parse_args()
 
@@ -708,6 +818,7 @@ Screener 3 선정 기준:
     # 날짜 범위 처리
     use_historical = False
     date_list = []
+    cache_filename = None
 
     if args.from_date:
         use_historical = True
@@ -722,6 +833,10 @@ Screener 3 선정 기준:
 
             print(f"\n📅 분석 기간: {args.from_date} ~ {end.strftime('%Y%m%d')}")
             print(f"   총 {len(date_list)}일 분석 예정\n")
+
+            cache_from = args.from_date
+            cache_to = args.to_date if args.to_date else args.from_date
+            cache_filename = f"data/api_data_{cache_from}_{cache_to}.json"
 
         except ValueError:
             print("❌ 날짜 형식이 잘못되었습니다. YYYYMMDD 형식으로 입력해주세요.")
@@ -762,6 +877,11 @@ Screener 3 선정 기준:
             sys.exit(1)
 
     # API 클라이언트 초기화
+    skip_api_init = False
+    if use_historical and cache_filename and not args.refresh and not args.no_cache:
+        if os.path.exists(cache_filename) and os.path.exists('kospi_200_code.json'):
+            skip_api_init = True
+
     try:
         print(f"\n입력받은 값:")
         print(f"  APP_KEY 길이: {len(app_key)}")
@@ -770,7 +890,14 @@ Screener 3 선정 기준:
         print(f"  모의투자: {mock}")
         print(f"  과거 데이터 분석: {use_historical}\n")
 
-        api = KISAPIClient(app_key, app_secret, account, mock=mock, use_pykrx_for_historical=use_historical)
+        api = KISAPIClient(
+            app_key,
+            app_secret,
+            account,
+            mock=mock,
+            use_pykrx_for_historical=use_historical,
+            skip_api_init=skip_api_init
+        )
     except Exception as e:
         print(f"\n❌ API 초기화 실패: {e}")
         sys.exit(1)
@@ -780,30 +907,70 @@ Screener 3 선정 기준:
     print("KOSPI 200 종목 코드 로딩 중...")
     print("=" * 60)
 
-    kospi200_stocks = api.get_kospi200_stocks(use_cache=not args.no_cache)
+    if skip_api_init and os.path.exists('kospi_200_code.json'):
+        try:
+            with open('kospi_200_code.json', 'r', encoding='utf-8') as f:
+                cache_data = json.load(f)
+            kospi200_stocks = cache_data.get('stocks', [])
+            print(f"캐시에서 KOSPI 200 종목 {len(kospi200_stocks)}개 로드 완료")
+        except Exception as e:
+            print(f"⚠️ KOSPI 200 캐시 로드 실패: {e}. API에서 다시 가져옵니다.")
+            kospi200_stocks = api.get_kospi200_stocks(use_cache=not args.no_cache)
+    else:
+        kospi200_stocks = api.get_kospi200_stocks(use_cache=not args.no_cache)
     print(f"총 {len(kospi200_stocks)}개 종목 로드 완료\n")
 
     # 선정 기준 설정 (Screener 3)
     criteria = {
         'ma25_deviation_max': args.ma25_deviation_max,
-        'rsi_oversold': args.rsi_oversold
+        'rsi_oversold': args.rsi_oversold,
+        'volume_increase_pct': args.volume,
+        'enable_macd': not args.no_macd,
+        'enable_rsi': not args.no_rsi,
+        'enable_ma25': not args.no_ma25
     }
 
     print("=" * 60)
     print("BNF 매매법 기준 (Screener 3):")
-    print(f"  - MA25 이격율: {criteria['ma25_deviation_max']}% 이하")
-    print(f"  - RSI 과매도 매수 신호: 이전 RSI < {criteria['rsi_oversold']}이고 현재 RSI 상승")
-    print(f"  - MACD: 0보다 큰 값")
+    if criteria['enable_ma25']:
+        print(f"  - MA25 이격율: {criteria['ma25_deviation_max']}% 이하")
+    if criteria['enable_rsi']:
+        print(f"  - RSI: {criteria['rsi_oversold']} 이하 & RSI14가 RSI9(시그널)을 상향 돌파")
+    if criteria['enable_macd']:
+        print(f"  - MACD: MACD(12,26)이 MACD(9) 시그널을 상향 돌파")
+    if criteria['volume_increase_pct'] is not None:
+        print(f"  - 거래량: 전일 대비 {criteria['volume_increase_pct']}% 이상")
     print("=" * 60)
 
     # 날짜별 분석
     if use_historical and date_list:
         all_results = {}
 
+        api_cache = {}
+        cache_keys = []
+        if args.to_date:
+            cache_keys = [args.from_date, args.to_date]
+        else:
+            cache_keys = [args.from_date, args.from_date]
+
+        cache_filename = f"data/api_data_{cache_keys[0]}_{cache_keys[1]}.json"
+
+        if not args.refresh:
+            api_cache = BNFStockScreener.load_api_cache(cache_filename)
+            if api_cache:
+                print(f"✓ 캐시 파일 '{cache_filename}'에서 데이터 로드 완료")
+
+        os.makedirs('data', exist_ok=True)
+
         for target_date in date_list:
             print(f"\n{'='*60}")
             print(f"분석 날짜: {target_date}")
             print(f"{'='*60}")
+
+            date_cache = api_cache.get(target_date)
+            if date_cache is None:
+                date_cache = {}
+                api_cache[target_date] = date_cache
 
             screener = BNFStockScreener(api, target_date=target_date)
 
@@ -812,7 +979,8 @@ Screener 3 선정 기준:
                 criteria,
                 max_stocks=args.max_stocks,
                 save_progress=True,
-                use_historical=True
+                use_historical=True,
+                historical_data=date_cache
             )
 
             all_results[target_date] = selected_stocks
@@ -820,10 +988,16 @@ Screener 3 선정 기준:
             if selected_stocks:
                 print(f"\n{target_date}: {len(selected_stocks)}개 종목 선정")
                 for stock in selected_stocks[:5]:
-                    prev_rsi = stock.get('prev_rsi', 0)
-                    curr_rsi = stock.get('curr_rsi', 0)
-                    rsi_change = curr_rsi - prev_rsi if (curr_rsi and prev_rsi) else 0
-                    print(f"  - {stock['stock_name']} ({stock['stock_code']}): 이격율 {stock['price_above_ma25_pct']:.2f}%, RSI {prev_rsi:.2f}→{curr_rsi:.2f} (+{rsi_change:.2f})")
+                    prev_rsi = stock.get('prev_rsi')
+                    curr_rsi = stock.get('curr_rsi')
+                    rsi_text = ""
+                    if criteria.get('enable_rsi', True) and prev_rsi is not None and curr_rsi is not None:
+                        rsi_change = curr_rsi - prev_rsi
+                        rsi_text = f", RSI {prev_rsi:.2f}→{curr_rsi:.2f} (+{rsi_change:.2f})"
+                    print(f"  - {stock['stock_name']} ({stock['stock_code']}): 이격율 {stock['price_above_ma25_pct']:.2f}%{rsi_text}")
+
+        if api_cache:
+            BNFStockScreener.save_api_cache(cache_filename, api_cache)
 
         # 전체 요약
         print("\n" + "=" * 60)
@@ -860,11 +1034,18 @@ Screener 3 선정 기준:
             print("-" * 100)
             for idx, stock in enumerate(selected_stocks[:20], 1):
                 strategy = stock['trading_strategy']
-                prev_rsi = stock.get('prev_rsi', 0)
-                curr_rsi = stock.get('curr_rsi', 0)
-                rsi_change = curr_rsi - prev_rsi if (curr_rsi and prev_rsi) else 0
+                prev_rsi = stock.get('prev_rsi')
+                curr_rsi = stock.get('curr_rsi')
+                rsi_change = (curr_rsi - prev_rsi) if (prev_rsi is not None and curr_rsi is not None) else None
                 print(f"\n{idx}. {stock['stock_name']} ({stock['stock_code']}) - 현재가: {int(stock['current_price']):,}원")
-                print(f"   📊 이격율: {stock['price_above_ma25_pct']:.2f}% | RSI: {prev_rsi:.2f}→{curr_rsi:.2f} (+{rsi_change:.2f}) | MACD: {stock['macd']:.2f}")
+                rsi_info = ""
+                if criteria.get('enable_rsi', True) and prev_rsi is not None and curr_rsi is not None and rsi_change is not None:
+                    rsi_info = f" | RSI: {prev_rsi:.2f}→{curr_rsi:.2f} (+{rsi_change:.2f})"
+                macd_value = stock.get('macd')
+                macd_text = f"{macd_value:.2f}" if macd_value is not None else "N/A"
+                ma25_pct = stock.get('price_above_ma25_pct')
+                ma25_text = f"{ma25_pct:.2f}%" if ma25_pct is not None else "N/A"
+                print(f"   📊 이격율: {ma25_text}{rsi_info} | MACD: {macd_text}")
 
                 if strategy['stop_loss']:
                     sl = strategy['stop_loss']

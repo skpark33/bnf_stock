@@ -1,0 +1,241 @@
+{
+  "screener_version": 3,
+  "trading_date": "20250805",
+  "generated_at": "2025-10-26 11:05:57",
+  "total_count": 5,
+  "criteria": {
+    "description": "MA25 이격율 -10% 이하, RSI 30 이하 상향 돌파, MACD(12,26) 상향 돌파"
+  },
+  "selected_stocks": [
+    {
+      "code": "352820",
+      "name": "하이브",
+      "price": 262000.0,
+      "change_pct": 0.58,
+      "volume": 166073,
+      "volume_ratio": 0.71,
+      "ma25": 269000.0,
+      "price_above_ma25_pct": -2.6,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": -7814.51,
+      "macd_signal": -8021.74,
+      "macd_hist": 207.22,
+      "atr": 8982.14,
+      "trading_strategy": {
+        "entry_price": 262000.0,
+        "stop_loss": {
+          "price": 254140,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 269000,
+            "pct": 2.67,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 282450,
+            "pct": 7.81,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 246000.0,
+        "resistance_line": 280000.0,
+        "atr": 8982.142857142857,
+        "ma25": 269000.0,
+        "risk_reward_ratio": 0.89
+      }
+    },
+    {
+      "code": "012630",
+      "name": "HDC",
+      "price": 23400.0,
+      "change_pct": 3.54,
+      "volume": 292554,
+      "volume_ratio": 1.33,
+      "ma25": 22690.0,
+      "price_above_ma25_pct": 3.13,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 140.63,
+      "macd_signal": 106.03,
+      "macd_hist": 34.6,
+      "atr": 1142.86,
+      "trading_strategy": {
+        "entry_price": 23400.0,
+        "stop_loss": {
+          "price": 22698,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 22690,
+            "pct": -3.03,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 23824,
+            "pct": 1.81,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 20500.0,
+        "resistance_line": 25000.0,
+        "atr": 1142.857142857143,
+        "ma25": 22690.0,
+        "risk_reward_ratio": -1.01
+      }
+    },
+    {
+      "code": "069260",
+      "name": "TKG휴켐스",
+      "price": 18190.0,
+      "change_pct": 0.11,
+      "volume": 85869,
+      "volume_ratio": 0.92,
+      "ma25": 17542.0,
+      "price_above_ma25_pct": 3.69,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 252.71,
+      "macd_signal": 252.19,
+      "macd_hist": 0.51,
+      "atr": 533.93,
+      "trading_strategy": {
+        "entry_price": 18190.0,
+        "stop_loss": {
+          "price": 17644,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 17542,
+            "pct": -3.56,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 18419,
+            "pct": 1.26,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 17080.0,
+        "resistance_line": 18995.0,
+        "atr": 533.9285714285714,
+        "ma25": 17542.0,
+        "risk_reward_ratio": -1.19
+      }
+    },
+    {
+      "code": "000150",
+      "name": "두산",
+      "price": 617000.0,
+      "change_pct": 7.68,
+      "volume": 231236,
+      "volume_ratio": 1.52,
+      "ma25": 576360.0,
+      "price_above_ma25_pct": 7.05,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 3633.69,
+      "macd_signal": 1611.41,
+      "macd_hist": 2022.28,
+      "atr": 31500.0,
+      "trading_strategy": {
+        "entry_price": 617000.0,
+        "stop_loss": {
+          "price": 598490,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 576360,
+            "pct": -6.59,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 605178,
+            "pct": -1.92,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 531000.0,
+        "resistance_line": 631000.0,
+        "atr": 31500.0,
+        "ma25": 576360.0,
+        "risk_reward_ratio": -2.2
+      }
+    },
+    {
+      "code": "326030",
+      "name": "SK바이오팜",
+      "price": 111400.0,
+      "change_pct": 15.92,
+      "volume": 2788123,
+      "volume_ratio": 8.09,
+      "ma25": 98488.0,
+      "price_above_ma25_pct": 13.11,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 1850.23,
+      "macd_signal": 1756.08,
+      "macd_hist": 94.15,
+      "atr": 4721.43,
+      "trading_strategy": {
+        "entry_price": 111400.0,
+        "stop_loss": {
+          "price": 108058,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 98488,
+            "pct": -11.59,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 103412,
+            "pct": -7.17,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 91800.0,
+        "resistance_line": 117000.0,
+        "atr": 4721.428571428572,
+        "ma25": 98488.0,
+        "risk_reward_ratio": -3.86
+      }
+    }
+  ]
+}

@@ -19,7 +19,7 @@ KOSPI 200 종목 중에서 BNF 매매법 기준에 맞는 종목을 선정하는
 **선정 기준:**
 - MA25 이격율이 -10% 이하 (현재가가 25일 이동평균선보다 10% 이상 낮을 것)
 - RSI 과매도 매수 신호 (이전 RSI < 30이고 현재 RSI가 상승 전환)
-- MACD가 0보다 클 것
+- MACD(12,26)가 MACD(9) 시그널을 상향 돌파할 것
 
 **이격율 계산 공식:**
 ```
@@ -101,7 +101,12 @@ bnf_stock/
 | `--max-stocks` | 분석할 최대 종목 수 | 전체 |
 | `--no-cache` | 캐시 파일 사용 안함 | false |
 | `--ma25-deviation-max` | MA25 이격율 최댓값 (%) | -10.0 |
-| `--rsi-oversold` | RSI 과매도 기준 | 30 |
+| `--rsi-oversold` | RSI 최대값 (RSI14가 RSI9(시그널)을 상향 돌파할 때) | 30.0 |
+| `--volume` | 전일 대비 거래량 증가율 기준 (%) | - |
+| `--refresh` | 저장된 API 데이터를 무시하고 새로 수집 | false |
+| `--no-macd` | MACD 조건 제외 | false |
+| `--no-rsi` | RSI 조건 제외 | false |
+| `--no-ma25` | MA25 이격율 조건 제외 | false |
 
 ### 사용 예시
 
@@ -137,11 +142,38 @@ python bnf_stock_screener3.py --config config.json --ma25-deviation-max -5
 #### 5. RSI 조건 조정
 
 ```bash
-# RSI 25 미만 (더 강한 과매도)
-python bnf_stock_screener3.py --config config.json --rsi-oversold 25
+# RSI가 30 이하이면서 RSI14가 RSI9(시그널)을 상향 돌파한 종목만 선정
+python bnf_stock_screener3.py --config config.json --rsi-oversold 30
 
-# RSI 35 미만 (완화)
-python bnf_stock_screener3.py --config config.json --rsi-oversold 35
+#### 6. 거래량 조건 추가
+
+```bash
+# 전일 대비 거래량 150% 이상인 종목만 선정 (1.5배)
+python bnf_stock_screener3.py --config config.json --volume 150
+
+# 전일 대비 거래량 200% 이상인 종목만 선정 (2배)
+python bnf_stock_screener3.py --config config.json --volume 200
+
+# 전일 대비 거래량이 같거나 많은 종목만 선정 (1배 이상)
+python bnf_stock_screener3.py --config config.json --volume 100
+```
+
+`--volume` 값은 전일 대비 거래량 비율을 %로 표현한 것입니다. 예를 들어 100은 전일과 동일 이상(≥1배), 150은 전일의 150%(1.5배), 200은 전일의 200%(2배) 이상일 때만 종목이 선정됩니다. 옵션을 생략하면 거래량 조건은 적용되지 않습니다.
+
+#### 7. API 데이터 캐시 재생성
+
+```bash
+# 기존 캐시를 무시하고 새롭게 API 데이터를 수집
+python bnf_stock_screener3.py --config config.json --from 20240101 --to 20240131 --refresh
+
+# MACD 조건을 제외하고 선정
+python bnf_stock_screener3.py --config config.json --no-macd
+
+# RSI 조건을 제외하고 선정
+python bnf_stock_screener3.py --config config.json --no-rsi
+
+# MA25 이격율 조건을 제외하고 선정
+python bnf_stock_screener3.py --config config.json --no-ma25
 ```
 
 #### 6. 명령줄에서 직접 인증 정보 입력
@@ -173,7 +205,7 @@ python bnf_stock_screener3.py --config config.json --max-stocks 50
   "generated_at": "2025-01-15 15:30:00",
   "total_count": 5,
   "criteria": {
-    "description": "MA25 이격율 -10% 이하, RSI 과매도, MACD > 0"
+    "description": "MA25 이격율 -10% 이하, RSI 30 이하 상향 돌파, MACD(12,26) 상향 돌파"
   },
   "selected_stocks": [
     {
@@ -209,6 +241,7 @@ python bnf_stock_screener3.py --config config.json --max-stocks 50
 | `--to` | 백테스팅 종료일 (YYYYMMDD) | **필수** |
 | `--tp1-ratio` | 1차 익절 비율 (%) | 50.0 |
 | `--tp2-ratio` | 2차 익절 비율 (%) | 50.0 |
+| `--exclude-minus-price` | 선정 다음날 시가가 진입가보다 낮으면 제외 | false |
 
 ### 사용 예시
 
@@ -216,6 +249,9 @@ python bnf_stock_screener3.py --config config.json --max-stocks 50
 
 ```bash
 python bnf_stock_back_test.py --from 20250101 --to 20250131
+
+# 다음날 시가가 진입가보다 낮은 종목 제외
+python bnf_stock_back_test.py --from 20250101 --to 20250131 --exclude-minus-price
 ```
 
 #### 2. 익절 비율 조정

@@ -1,0 +1,563 @@
+{
+  "screener_version": 3,
+  "trading_date": "20250806",
+  "generated_at": "2025-10-26 11:05:57",
+  "total_count": 12,
+  "criteria": {
+    "description": "MA25 이격율 -10% 이하, RSI 30 이하 상향 돌파, MACD(12,26) 상향 돌파"
+  },
+  "selected_stocks": [
+    {
+      "code": "042700",
+      "name": "한미반도체",
+      "price": 88400.0,
+      "change_pct": 0.57,
+      "volume": 383634,
+      "volume_ratio": 0.66,
+      "ma25": 89780.0,
+      "price_above_ma25_pct": -1.54,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": -955.82,
+      "macd_signal": -1012.61,
+      "macd_hist": 56.8,
+      "atr": 3192.86,
+      "trading_strategy": {
+        "entry_price": 88400.0,
+        "stop_loss": {
+          "price": 85748,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 89780,
+            "pct": 1.56,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 94269,
+            "pct": 6.64,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 82700.0,
+        "resistance_line": 98200.0,
+        "atr": 3192.8571428571427,
+        "ma25": 89780.0,
+        "risk_reward_ratio": 0.52
+      }
+    },
+    {
+      "code": "017670",
+      "name": "SK텔레콤",
+      "price": 56300.0,
+      "change_pct": -0.35,
+      "volume": 476647,
+      "volume_ratio": 0.77,
+      "ma25": 55748.0,
+      "price_above_ma25_pct": 0.99,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 221.13,
+      "macd_signal": 217.23,
+      "macd_hist": 3.9,
+      "atr": 832.14,
+      "trading_strategy": {
+        "entry_price": 56300.0,
+        "stop_loss": {
+          "price": 54611,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 55748,
+            "pct": -0.98,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 58535,
+            "pct": 3.97,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 54200.0,
+        "resistance_line": 57200.0,
+        "atr": 832.1428571428571,
+        "ma25": 55748.0,
+        "risk_reward_ratio": -0.33
+      }
+    },
+    {
+      "code": "000720",
+      "name": "현대건설",
+      "price": 71200.0,
+      "change_pct": 5.48,
+      "volume": 2094151,
+      "volume_ratio": 1.47,
+      "ma25": 69504.0,
+      "price_above_ma25_pct": 2.44,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": -875.42,
+      "macd_signal": -943.89,
+      "macd_hist": 68.47,
+      "atr": 3128.57,
+      "trading_strategy": {
+        "entry_price": 71200.0,
+        "stop_loss": {
+          "price": 69064,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 69504,
+            "pct": -2.38,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 72979,
+            "pct": 2.5,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 63400.0,
+        "resistance_line": 75200.0,
+        "atr": 3128.5714285714284,
+        "ma25": 69504.0,
+        "risk_reward_ratio": -0.79
+      }
+    },
+    {
+      "code": "093370",
+      "name": "후성",
+      "price": 4955.0,
+      "change_pct": 2.59,
+      "volume": 697911,
+      "volume_ratio": 2.04,
+      "ma25": 4819.6,
+      "price_above_ma25_pct": 2.81,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 5.94,
+      "macd_signal": 5.51,
+      "macd_hist": 0.44,
+      "atr": 183.93,
+      "trading_strategy": {
+        "entry_price": 4955.0,
+        "stop_loss": {
+          "price": 4806,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 4819,
+            "pct": -2.73,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 5060,
+            "pct": 2.13,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 4550.0,
+        "resistance_line": 5080.0,
+        "atr": 183.92857142857142,
+        "ma25": 4819.6,
+        "risk_reward_ratio": -0.91
+      }
+    },
+    {
+      "code": "018880",
+      "name": "한온시스템",
+      "price": 3360.0,
+      "change_pct": 1.36,
+      "volume": 725692,
+      "volume_ratio": 0.91,
+      "ma25": 3265.6,
+      "price_above_ma25_pct": 2.89,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 27.76,
+      "macd_signal": 24.0,
+      "macd_hist": 3.76,
+      "atr": 114.29,
+      "trading_strategy": {
+        "entry_price": 3360.0,
+        "stop_loss": {
+          "price": 3259,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 3265,
+            "pct": -2.81,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 3428,
+            "pct": 2.05,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 3135.0,
+        "resistance_line": 3450.0,
+        "atr": 114.28571428571429,
+        "ma25": 3265.6,
+        "risk_reward_ratio": -0.94
+      }
+    },
+    {
+      "code": "001440",
+      "name": "대한전선",
+      "price": 16420.0,
+      "change_pct": -0.18,
+      "volume": 950948,
+      "volume_ratio": 0.89,
+      "ma25": 15878.8,
+      "price_above_ma25_pct": 3.41,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 96.62,
+      "macd_signal": 88.55,
+      "macd_hist": 8.07,
+      "atr": 530.0,
+      "trading_strategy": {
+        "entry_price": 16420.0,
+        "stop_loss": {
+          "price": 15927,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 15878,
+            "pct": -3.3,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 16672,
+            "pct": 1.54,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 15010.0,
+        "resistance_line": 16590.0,
+        "atr": 530.0,
+        "ma25": 15878.8,
+        "risk_reward_ratio": -1.1
+      }
+    },
+    {
+      "code": "267260",
+      "name": "HD현대일렉트릭",
+      "price": 507000.0,
+      "change_pct": 0.6,
+      "volume": 134344,
+      "volume_ratio": 0.6,
+      "ma25": 475580.0,
+      "price_above_ma25_pct": 6.61,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 12540.35,
+      "macd_signal": 12194.27,
+      "macd_hist": 346.08,
+      "atr": 19928.57,
+      "trading_strategy": {
+        "entry_price": 507000.0,
+        "stop_loss": {
+          "price": 491790,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 475580,
+            "pct": -6.2,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 499359,
+            "pct": -1.51,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 434500.0,
+        "resistance_line": 509000.0,
+        "atr": 19928.571428571428,
+        "ma25": 475580.0,
+        "risk_reward_ratio": -2.07
+      }
+    },
+    {
+      "code": "052690",
+      "name": "한전기술",
+      "price": 96300.0,
+      "change_pct": 6.88,
+      "volume": 964532,
+      "volume_ratio": 2.54,
+      "ma25": 90176.0,
+      "price_above_ma25_pct": 6.79,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 226.29,
+      "macd_signal": -71.12,
+      "macd_hist": 297.41,
+      "atr": 4357.14,
+      "trading_strategy": {
+        "entry_price": 96300.0,
+        "stop_loss": {
+          "price": 93411,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 90176,
+            "pct": -6.36,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 94684,
+            "pct": -1.68,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 83800.0,
+        "resistance_line": 97800.0,
+        "atr": 4357.142857142857,
+        "ma25": 90176.0,
+        "risk_reward_ratio": -2.12
+      }
+    },
+    {
+      "code": "005420",
+      "name": "코스모화학",
+      "price": 17300.0,
+      "change_pct": 3.1,
+      "volume": 390816,
+      "volume_ratio": 1.92,
+      "ma25": 15888.8,
+      "price_above_ma25_pct": 8.88,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 396.92,
+      "macd_signal": 359.75,
+      "macd_hist": 37.17,
+      "atr": 845.0,
+      "trading_strategy": {
+        "entry_price": 17300.0,
+        "stop_loss": {
+          "price": 16781,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 15888,
+            "pct": -8.16,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 16683,
+            "pct": -3.57,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 14790.0,
+        "resistance_line": 17930.0,
+        "atr": 845.0,
+        "ma25": 15888.8,
+        "risk_reward_ratio": -2.72
+      }
+    },
+    {
+      "code": "086280",
+      "name": "현대글로비스",
+      "price": 159500.0,
+      "change_pct": 7.19,
+      "volume": 360983,
+      "volume_ratio": 1.84,
+      "ma25": 144268.0,
+      "price_above_ma25_pct": 10.56,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 4648.49,
+      "macd_signal": 4302.27,
+      "macd_hist": 346.22,
+      "atr": 5957.14,
+      "trading_strategy": {
+        "entry_price": 159500.0,
+        "stop_loss": {
+          "price": 154715,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 144268,
+            "pct": -9.55,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 151481,
+            "pct": -5.03,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 139800.0,
+        "resistance_line": 159700.0,
+        "atr": 5957.142857142857,
+        "ma25": 144268.0,
+        "risk_reward_ratio": -3.18
+      }
+    },
+    {
+      "code": "457190",
+      "name": "이수스페셜티케미컬",
+      "price": 51100.0,
+      "change_pct": 10.61,
+      "volume": 1971283,
+      "volume_ratio": 4.64,
+      "ma25": 43942.0,
+      "price_above_ma25_pct": 16.29,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 1030.95,
+      "macd_signal": 716.28,
+      "macd_hist": 314.67,
+      "atr": 2683.93,
+      "trading_strategy": {
+        "entry_price": 51100.0,
+        "stop_loss": {
+          "price": 49567,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 43942,
+            "pct": -14.01,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 46139,
+            "pct": -9.71,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 40350.0,
+        "resistance_line": 51900.0,
+        "atr": 2683.9285714285716,
+        "ma25": 43942.0,
+        "risk_reward_ratio": -4.67
+      }
+    },
+    {
+      "code": "278470",
+      "name": "에이피알",
+      "price": 208500.0,
+      "change_pct": 11.32,
+      "volume": 2829191,
+      "volume_ratio": 4.8,
+      "ma25": 171368.0,
+      "price_above_ma25_pct": 21.67,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 10462.23,
+      "macd_signal": 9375.25,
+      "macd_hist": 1086.98,
+      "atr": 11985.71,
+      "trading_strategy": {
+        "entry_price": 208500.0,
+        "stop_loss": {
+          "price": 202245,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 171368,
+            "pct": -17.81,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 179936,
+            "pct": -13.7,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 160000.0,
+        "resistance_line": 224000.0,
+        "atr": 11985.714285714286,
+        "ma25": 171368.0,
+        "risk_reward_ratio": -5.94
+      }
+    }
+  ]
+}

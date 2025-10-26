@@ -1,0 +1,241 @@
+{
+  "screener_version": 3,
+  "trading_date": "20250811",
+  "generated_at": "2025-10-26 11:05:58",
+  "total_count": 5,
+  "criteria": {
+    "description": "MA25 이격율 -10% 이하, RSI 30 이하 상향 돌파, MACD(12,26) 상향 돌파"
+  },
+  "selected_stocks": [
+    {
+      "code": "006040",
+      "name": "동원산업",
+      "price": 46950.0,
+      "change_pct": -1.05,
+      "volume": 60352,
+      "volume_ratio": 1.3,
+      "ma25": 47118.0,
+      "price_above_ma25_pct": -0.36,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": -498.57,
+      "macd_signal": -586.47,
+      "macd_hist": 87.9,
+      "atr": 1900.0,
+      "trading_strategy": {
+        "entry_price": 46950.0,
+        "stop_loss": {
+          "price": 45541,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 47118,
+            "pct": 0.36,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 49473,
+            "pct": 5.38,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 43100.0,
+        "resistance_line": 49800.0,
+        "atr": 1900.0,
+        "ma25": 47118.0,
+        "risk_reward_ratio": 0.12
+      }
+    },
+    {
+      "code": "007070",
+      "name": "GS리테일",
+      "price": 17030.0,
+      "change_pct": -0.99,
+      "volume": 105825,
+      "volume_ratio": 0.64,
+      "ma25": 16942.0,
+      "price_above_ma25_pct": 0.52,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": -67.72,
+      "macd_signal": -84.11,
+      "macd_hist": 16.4,
+      "atr": 479.29,
+      "trading_strategy": {
+        "entry_price": 17030.0,
+        "stop_loss": {
+          "price": 16519,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 16942,
+            "pct": -0.52,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 17789,
+            "pct": 4.46,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 15610.0,
+        "resistance_line": 18400.0,
+        "atr": 479.2857142857143,
+        "ma25": 16942.0,
+        "risk_reward_ratio": -0.17
+      }
+    },
+    {
+      "code": "450080",
+      "name": "에코프로머티",
+      "price": 54500.0,
+      "change_pct": 4.41,
+      "volume": 681585,
+      "volume_ratio": 1.06,
+      "ma25": 51432.0,
+      "price_above_ma25_pct": 5.97,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 963.87,
+      "macd_signal": 921.56,
+      "macd_hist": 42.3,
+      "atr": 2771.43,
+      "trading_strategy": {
+        "entry_price": 54500.0,
+        "stop_loss": {
+          "price": 52865,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 51432,
+            "pct": -5.63,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 54003,
+            "pct": -0.91,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 48150.0,
+        "resistance_line": 56800.0,
+        "atr": 2771.4285714285716,
+        "ma25": 51432.0,
+        "risk_reward_ratio": -1.88
+      }
+    },
+    {
+      "code": "034020",
+      "name": "두산에너빌리티",
+      "price": 69400.0,
+      "change_pct": 4.52,
+      "volume": 12119383,
+      "volume_ratio": 1.59,
+      "ma25": 64536.0,
+      "price_above_ma25_pct": 7.54,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 1711.87,
+      "macd_signal": 1701.78,
+      "macd_hist": 10.1,
+      "atr": 2842.86,
+      "trading_strategy": {
+        "entry_price": 69400.0,
+        "stop_loss": {
+          "price": 67318,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 64536,
+            "pct": -7.01,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 67762,
+            "pct": -2.36,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 60900.0,
+        "resistance_line": 70000.0,
+        "atr": 2842.8571428571427,
+        "ma25": 64536.0,
+        "risk_reward_ratio": -2.34
+      }
+    },
+    {
+      "code": "003670",
+      "name": "포스코퓨처엠",
+      "price": 162900.0,
+      "change_pct": 8.31,
+      "volume": 958992,
+      "volume_ratio": 1.63,
+      "ma25": 143572.0,
+      "price_above_ma25_pct": 13.46,
+      "rsi": null,
+      "prev_rsi": null,
+      "curr_rsi": null,
+      "macd": 5655.6,
+      "macd_signal": 5166.95,
+      "macd_hist": 488.64,
+      "atr": 7285.71,
+      "trading_strategy": {
+        "entry_price": 162900.0,
+        "stop_loss": {
+          "price": 158013,
+          "pct": -3.0,
+          "reason": "매수가 대비 -3%"
+        },
+        "take_profit": [
+          {
+            "level": 1,
+            "price": 143572,
+            "pct": -11.86,
+            "reason": "MA25 도달",
+            "action": "50% 부분 익절"
+          },
+          {
+            "level": 2,
+            "price": 150750,
+            "pct": -7.46,
+            "reason": "MA25 +5% 이격",
+            "action": "잔량 전량 익절"
+          }
+        ],
+        "support_line": 130200.0,
+        "resistance_line": 164600.0,
+        "atr": 7285.714285714285,
+        "ma25": 143572.0,
+        "risk_reward_ratio": -3.95
+      }
+    }
+  ]
+}
