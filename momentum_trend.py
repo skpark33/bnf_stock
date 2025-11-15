@@ -258,8 +258,8 @@ class StockScreener:
                 print(f"  search_end_idx: {search_end_idx}")
                 print(f"  검색 범위: {search_end_idx - search_start_idx}일\n")
             
-            # 전략 조건 확인 (역순: 최신 신호 우선)
-            for i in range(search_end_idx - 1, search_start_idx - 1, -1):
+            # 전략 조건 확인 (순방향: 초기 신호 우선, 빠른 진입)
+            for i in range(search_start_idx, search_end_idx):
                 passed, stage = self._check_strategy_conditions(
                     i, closes, highs, volumes, lows, ma60, ma120, high_20,
                     macd_line, signal_line, avg_volume, debug
@@ -278,17 +278,23 @@ class StockScreener:
                     entry_price = closes[i]
                     current_close = closes[-1]
                     
-                    # 손절가 계산 (신고가 돌파일 기준 이전 N일 최저가)
+                    # 단순 고정 퍼센트 손익 (피보나치 수열 기반)
+                    # 손절: -8%
+                    stop_loss = int(entry_price * 0.92)
+                    stop_loss_pct = -8.0
+                    
+                    # 1차 익절: +13% (50% 청산)
+                    take_profit_1 = int(entry_price * 1.13)
+                    take_profit_1_pct = 13.0
+                    
+                    # 2차 익절: +21% (나머지 50% 청산)
+                    take_profit_2 = int(entry_price * 1.21)
+                    take_profit_2_pct = 21.0
+                    
+                    # 지지선 계산 (참고용)
                     lookback_start = max(0, i - low_period)
                     lookback_end = i + 1
                     support_low = min(lows[lookback_start:lookback_end])
-                    
-                    stop_loss_amount = entry_price - support_low
-                    stop_loss = int(support_low)
-                    stop_loss_pct = ((support_low - entry_price) / entry_price) * 100 if entry_price != 0 else 0
-                    
-                    take_profit = int(entry_price + (stop_loss_amount * 2))
-                    take_profit_pct = ((take_profit - entry_price) / entry_price) * 100 if entry_price != 0 else 0
                     
                     profit_rate = ((current_close - entry_price) / entry_price) * 100 if entry_price != 0 else 0
                     
@@ -311,9 +317,11 @@ class StockScreener:
                         'ma120': int(ma120[i]) if ma120[i] is not None else 0,
                         'stop_loss': stop_loss,
                         'stop_loss_pct': round(stop_loss_pct, 2),
-                        'take_profit': take_profit,
-                        'take_profit_pct': round(take_profit_pct, 2),
-                        'risk_reward_ratio': 2.0,
+                        'take_profit_1': take_profit_1,
+                        'take_profit_1_pct': round(take_profit_1_pct, 2),
+                        'take_profit_2': take_profit_2,
+                        'take_profit_2_pct': round(take_profit_2_pct, 2),
+                        'risk_reward_ratio': 1.625,  # (13+21)/2 / 8
                         'support_low': int(support_low)
                     })
                     break  # 종목당 한 번만
@@ -336,7 +344,7 @@ class StockScreener:
                 print(f"0단계 - 검사 대상: {debug_stats['total_checked']:,}")
                 print(f"1단계 - 추세 필터 (60>120, 현재>60): {debug_stats['trend_filter']:,} / {debug_stats['total_checked']:,} ({debug_stats['trend_filter']/debug_stats['total_checked']*100:.1f}%)")
                 if debug_stats['trend_filter'] > 0:
-                    print(f"2단계 - 20일 신고가 돌파: {debug_stats['new_high']:,} / {debug_stats['trend_filter']:,} ({debug_stats['new_high']/debug_stats['trend_filter']*100:.1f}%)")
+                    print(f"2단계 - 20일 신고가 근접 (95~102%): {debug_stats['new_high']:,} / {debug_stats['trend_filter']:,} ({debug_stats['new_high']/debug_stats['trend_filter']*100:.1f}%)")
                 if debug_stats['new_high'] > 0:
                     print(f"3단계 - 거래량 폭발 (2배): {debug_stats['volume_surge']:,} / {debug_stats['new_high']:,} ({debug_stats['volume_surge']/debug_stats['new_high']*100:.1f}%)")
                 if debug_stats['volume_surge'] > 0:
@@ -375,8 +383,9 @@ class StockScreener:
             return False, stage
         stage = 1
         
-        # 2. 20일 신고가 돌파 (당일 종가가 전일까지의 20일 최고가보다 높음)
-        if closes[idx] <= high_20[idx-1]:
+        # 2. 20일 신고가 근접 (95~102% 범위)
+        # 돌파 직전(95~100%) + 돌파 직후 초반(100~102%)을 모두 포착
+        if closes[idx] < high_20[idx-1] * 0.95 or closes[idx] > high_20[idx-1] * 1.02:
             return False, stage
         stage = 2
         
@@ -425,6 +434,38 @@ def save_results(results, start_date, end_date):
         writer.writerow(['분석기간', f'{start_date} ~ {end_date}'])
         writer.writerow(['생성일시', datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
         writer.writerow(['선택종목수', str(len(sorted_results))])
+        
+        # 백테스팅 통계 (백테스팅 결과가 있는 경우)
+        if 'backtest' in sorted_results[0]:
+            writer.writerow([])  # 빈 줄
+            writer.writerow(['=== 백테스팅 통계 ==='])
+            
+            total = len(sorted_results)
+            profits = [s['backtest']['profit_rate'] for s in sorted_results]
+            
+            stop_loss_count = sum(1 for s in sorted_results if s['backtest']['exit_reason'] == 'stop_loss')
+            take_profit_2_count = sum(1 for s in sorted_results if s['backtest']['exit_reason'] == 'take_profit_2')
+            holding_50_count = sum(1 for s in sorted_results if s['backtest']['exit_reason'] == 'holding_50')
+            holding_100_count = sum(1 for s in sorted_results if s['backtest']['exit_reason'] == 'holding_100')
+            
+            win_count = sum(1 for p in profits if p > 0)
+            lose_count = sum(1 for p in profits if p < 0)
+            
+            avg_profit = sum(profits) / len(profits) if profits else 0
+            max_profit = max(profits) if profits else 0
+            min_profit = min(profits) if profits else 0
+            
+            writer.writerow(['총 종목 수', total])
+            writer.writerow(['승', f'{win_count}개 ({win_count/total*100:.1f}%)'])
+            writer.writerow(['패', f'{lose_count}개 ({lose_count/total*100:.1f}%)'])
+            writer.writerow(['손절', f'{stop_loss_count}개 ({stop_loss_count/total*100:.1f}%)'])
+            writer.writerow(['2차 익절 (21%, 전량 청산)', f'{take_profit_2_count}개 ({take_profit_2_count/total*100:.1f}%)'])
+            writer.writerow(['1차 익절 후 홀딩', f'{holding_50_count}개 ({holding_50_count/total*100:.1f}%)'])
+            writer.writerow(['전량 홀딩', f'{holding_100_count}개 ({holding_100_count/total*100:.1f}%)'])
+            writer.writerow(['평균 수익률', f'{avg_profit:+.2f}%'])
+            writer.writerow(['최대 수익률', f'{max_profit:+.2f}%'])
+            writer.writerow(['최소 수익률', f'{min_profit:+.2f}%'])
+        
         writer.writerow([])  # 빈 줄
         
         # 컬럼 헤더
@@ -432,17 +473,17 @@ def save_results(results, start_date, end_date):
             # 백테스팅 포함
             headers = [
                 '신호일', '종목코드', '종목명', '진입가', '현재가', '수익률(%)',
-                '신고가돌파(%)', '거래량비율', 'MACD', 'Signal', 'MA60', 'MA120',
-                '손절가', '손절률(%)', '익절가', '익절률(%)', '지지선',
-                '백테스트_진입일', '백테스트_진입가', '백테스트_청산일', '백테스트_청산가',
+                '신고가대비(%)', '거래량비율', 'MACD', 'Signal', 'MA60', 'MA120',
+                '손절가', '손절률(%)', '1차익절가', '1차익절률(%)', '2차익절가', '2차익절률(%)', '지지선',
+                '백테스트_진입일', '백테스트_진입가', '백테스트_청산일',
                 '백테스트_청산사유', '백테스트_수익률(%)'
             ]
         else:
             # 백테스팅 없음
             headers = [
                 '신호일', '종목코드', '종목명', '진입가', '현재가', '수익률(%)',
-                '신고가돌파(%)', '거래량비율', 'MACD', 'Signal', 'MA60', 'MA120',
-                '손절가', '손절률(%)', '익절가', '익절률(%)', '지지선'
+                '신고가대비(%)', '거래량비율', 'MACD', 'Signal', 'MA60', 'MA120',
+                '손절가', '손절률(%)', '1차익절가', '1차익절률(%)', '2차익절가', '2차익절률(%)', '지지선'
             ]
         
         writer.writerow(headers)
@@ -464,8 +505,10 @@ def save_results(results, start_date, end_date):
                 stock['ma120'],
                 stock['stop_loss'],
                 stock['stop_loss_pct'],
-                stock['take_profit'],
-                stock['take_profit_pct'],
+                stock['take_profit_1'],
+                stock['take_profit_1_pct'],
+                stock['take_profit_2'],
+                stock['take_profit_2_pct'],
                 stock['support_low']
             ]
             
@@ -475,7 +518,6 @@ def save_results(results, start_date, end_date):
                     bt['entry_date'],
                     bt['entry_price'],
                     bt['exit_date'],
-                    bt['exit_price'],
                     bt['exit_reason'],
                     bt['profit_rate']
                 ])
@@ -488,7 +530,7 @@ def save_results(results, start_date, end_date):
 
 
 def backtest_stocks(results, trading_days, end_date, silent=False):
-    """백테스팅: 익일 시가 매수 후 손절/익절 도달 여부 확인"""
+    """백테스팅: 익일 시가 매수 후 단계적 손절/익절 확인"""
     if not silent:
         print(f"\n{'='*80}")
         print(f"백테스팅 실행 중...")
@@ -508,47 +550,80 @@ def backtest_stocks(results, trading_days, end_date, silent=False):
         
         # 익일 시가로 진입
         entry_price = timeseries[signal_idx + 1]['open']
-        stop_loss = stock['stop_loss']
-        take_profit = stock['take_profit']
         
-        # 진입일 다음날부터 현재까지 검사
-        exit_price = None
+        # 시가가 0이거나 None인 경우 스킵 (데이터 오류)
+        if not entry_price or entry_price == 0:
+            continue
+        
+        stop_loss = stock['stop_loss']
+        take_profit_1 = stock['take_profit_1']
+        take_profit_2 = stock['take_profit_2']
+        
+        # 단계적 익절 추적
+        remaining_position = 1.0  # 100% 포지션
+        total_profit = 0.0
         exit_date = None
         exit_reason = None
+        first_exit_date = None
+        first_exit_reason = None
         
+        # 진입일 다음날부터 현재까지 검사
         for i in range(signal_idx + 1, len(timeseries)):
             day = timeseries[i]
             
             # 손절가 먼저 확인 (저가가 손절가 이하)
             if day['low'] <= stop_loss:
-                exit_price = stop_loss
+                # 남은 포지션 전량 손절
+                total_profit += remaining_position * ((stop_loss - entry_price) / entry_price) * 100
+                if not first_exit_date:
+                    first_exit_date = day['date']
+                    first_exit_reason = 'stop_loss'
                 exit_date = day['date']
                 exit_reason = 'stop_loss'
+                remaining_position = 0.0
                 break
             
-            # 익절가 확인 (고가가 익절가 이상)
-            if day['high'] >= take_profit:
-                exit_price = take_profit
+            # 1차 익절가 확인 (고가가 1차 익절가 이상)
+            if remaining_position == 1.0 and day['high'] >= take_profit_1:
+                # 50% 익절
+                total_profit += 0.5 * ((take_profit_1 - entry_price) / entry_price) * 100
+                remaining_position = 0.5
+                if not first_exit_date:
+                    first_exit_date = day['date']
+                    first_exit_reason = 'take_profit_1'
+                # 계속 진행하여 2차 익절 체크
+            
+            # 2차 익절가 확인 (고가가 2차 익절가 이상)
+            if remaining_position == 0.5 and day['high'] >= take_profit_2:
+                # 나머지 50% 익절
+                total_profit += 0.5 * ((take_profit_2 - entry_price) / entry_price) * 100
                 exit_date = day['date']
-                exit_reason = 'take_profit'
+                exit_reason = 'take_profit_2'
+                remaining_position = 0.0
                 break
         
-        # 손절/익절 미도달 시 홀딩
-        if exit_price is None:
-            exit_price = timeseries[-1]['close']
+        # 남은 포지션 처리
+        if remaining_position > 0:
+            current_price = timeseries[-1]['close']
+            total_profit += remaining_position * ((current_price - entry_price) / entry_price) * 100
             exit_date = timeseries[-1]['date']
-            exit_reason = 'holding'
+            if remaining_position == 1.0:
+                exit_reason = 'holding_100'
+            else:
+                exit_reason = 'holding_50'
         
-        profit_rate = ((exit_price - entry_price) / entry_price) * 100 if entry_price != 0 else 0
+        # 최종 평균 수익률
+        avg_profit_rate = total_profit
         
         backtested_stock = stock.copy()
         backtested_stock['backtest'] = {
             'entry_price': int(entry_price),
             'entry_date': timeseries[signal_idx + 1]['date'],
-            'exit_price': int(exit_price),
             'exit_date': exit_date,
             'exit_reason': exit_reason,
-            'profit_rate': round(profit_rate, 2)
+            'profit_rate': round(avg_profit_rate, 2),
+            'first_exit_date': first_exit_date if first_exit_date else exit_date,
+            'first_exit_reason': first_exit_reason if first_exit_reason else exit_reason
         }
         
         backtested_results.append(backtested_stock)
@@ -576,17 +651,27 @@ def print_final_summary(results, silent=False):
         if 'backtest' in stock:
             bt = stock['backtest']
             print(f"  매수일: {bt['entry_date']} (시가 {bt['entry_price']:,}원)")
-            print(f"  매도일: {bt['exit_date']} ({bt['exit_reason']}, {bt['exit_price']:,}원)")
+            
+            # 청산 사유별 메시지
+            reason_msg = {
+                'stop_loss': '손절 (-8%)',
+                'take_profit_1': '1차 익절 후 현재가 청산',
+                'take_profit_2': '2차 익절 완료 (전량 청산)',
+                'holding_50': '1차 익절 후 50% 홀딩 중',
+                'holding_100': '전량 홀딩 중'
+            }
+            print(f"  청산일: {bt['exit_date']} ({reason_msg.get(bt['exit_reason'], bt['exit_reason'])})")
             print(f"  수익률: {bt['profit_rate']:+.2f}%")
         else:
             print(f"  현재가: {stock['current_price']:,}원")
             print(f"  수익률: {stock['profit_rate']:+.2f}%")
         
         print(f"  거래량: 평균 대비 {stock['volume_ratio']:.1f}배")
-        print(f"  신고가 돌파: +{stock['high_20_breakout']:.2f}%")
+        print(f"  신고가 대비: {stock['high_20_breakout']:+.2f}%")
         print(f"  MACD: {stock['macd_value']:.2f} (Signal: {stock['macd_signal']:.2f})")
         print(f"  손절가: {stock['stop_loss']:,}원 ({stock['stop_loss_pct']:+.2f}%)")
-        print(f"  익절가: {stock['take_profit']:,}원 ({stock['take_profit_pct']:+.2f}%)")
+        print(f"  1차 익절가: {stock['take_profit_1']:,}원 (+{stock['take_profit_1_pct']:.1f}%, 50% 청산)")
+        print(f"  2차 익절가: {stock['take_profit_2']:,}원 (+{stock['take_profit_2_pct']:.1f}%, 나머지 청산)")
         print(f"  지지선: {stock['support_low']:,}원")
         print()
 
@@ -623,7 +708,7 @@ def main():
     parser.add_argument('--from', dest='from_date', help='시작일 (YYYYMMDD)')
     parser.add_argument('--to', dest='to_date', help='종료일 (YYYYMMDD)')
     parser.add_argument('--backtest', action='store_true', help='백테스팅 모드 (--from, --to 필수)')
-    parser.add_argument('--low_period', type=int, default=20, help='전저점 계산 기간 (일, 기본값: 20)')
+    parser.add_argument('--low_period', type=int, default=20, help='변동폭 계산 기간 (일, 기본값: 20, 피보나치 손익 계산에 사용)')
     parser.add_argument('--silent', action='store_true', help='간략 출력 모드 (최종 결과만 표시)')
     parser.add_argument('--debug', action='store_true', help='디버그 모드 (각 조건별 통과율 표시)')
     
@@ -701,15 +786,18 @@ def main():
         
         # 백테스팅 통계
         print(f"\n{'='*80}")
-        print(f"백테스팅 통계")
+        print(f"백테스팅 통계 (단계적 익절: 13%에서 50%, 21%에서 나머지 50%)")
         print(f"{'='*80}")
         
         total = len(backtested_stocks)
         profits = [s['backtest']['profit_rate'] for s in backtested_stocks]
         
+        # 청산 사유별 카운트
         stop_loss_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'] == 'stop_loss')
-        take_profit_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'] == 'take_profit')
-        holding_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'] == 'holding')
+        take_profit_1_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'] == 'take_profit_1')
+        take_profit_2_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'] == 'take_profit_2')
+        holding_50_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'] == 'holding_50')
+        holding_100_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'] == 'holding_100')
         
         win_count = sum(1 for p in profits if p > 0)
         lose_count = sum(1 for p in profits if p < 0)
@@ -723,8 +811,10 @@ def main():
         print(f"패: {lose_count}개 ({lose_count/total*100:.1f}%)")
         print(f"")
         print(f"손절: {stop_loss_count}개 ({stop_loss_count/total*100:.1f}%)")
-        print(f"익절: {take_profit_count}개 ({take_profit_count/total*100:.1f}%)")
-        print(f"홀딩: {holding_count}개 ({holding_count/total*100:.1f}%)")
+        print(f"1차 익절 (13%, 50% 청산): {take_profit_1_count}개 ({take_profit_1_count/total*100:.1f}%)")
+        print(f"2차 익절 (21%, 전량 청산): {take_profit_2_count}개 ({take_profit_2_count/total*100:.1f}%)")
+        print(f"1차 익절 후 홀딩: {holding_50_count}개 ({holding_50_count/total*100:.1f}%)")
+        print(f"전량 홀딩: {holding_100_count}개 ({holding_100_count/total*100:.1f}%)")
         print(f"")
         print(f"평균 수익률: {avg_profit:+.2f}%")
         print(f"최대 수익률: {max_profit:+.2f}%")
