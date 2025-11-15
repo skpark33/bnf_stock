@@ -529,11 +529,15 @@ def save_results(results, start_date, end_date):
     print(f"{'='*60}")
 
 
-def backtest_stocks(results, trading_days, end_date, silent=False):
+def backtest_stocks(results, trading_days, end_date, silent=False, single_profit_cut=False):
     """백테스팅: 익일 시가 매수 후 단계적 손절/익절 확인"""
     if not silent:
         print(f"\n{'='*80}")
         print(f"백테스팅 실행 중...")
+        if single_profit_cut:
+            print(f"(단일 익절 모드: 21%에서 전량 청산)")
+        else:
+            print(f"(다단계 익절 모드: 13%에서 50%, 21%에서 50%)")
         print(f"{'='*80}\n")
     
     backtested_results = []
@@ -583,24 +587,38 @@ def backtest_stocks(results, trading_days, end_date, silent=False):
                 remaining_position = 0.0
                 break
             
-            # 1차 익절가 확인 (고가가 1차 익절가 이상)
-            if remaining_position == 1.0 and day['high'] >= take_profit_1:
-                # 50% 익절
-                total_profit += 0.5 * ((take_profit_1 - entry_price) / entry_price) * 100
-                remaining_position = 0.5
-                if not first_exit_date:
-                    first_exit_date = day['date']
-                    first_exit_reason = 'take_profit_1'
-                # 계속 진행하여 2차 익절 체크
-            
-            # 2차 익절가 확인 (고가가 2차 익절가 이상)
-            if remaining_position == 0.5 and day['high'] >= take_profit_2:
-                # 나머지 50% 익절
-                total_profit += 0.5 * ((take_profit_2 - entry_price) / entry_price) * 100
-                exit_date = day['date']
-                exit_reason = 'take_profit_2'
-                remaining_position = 0.0
-                break
+            # 단일 익절 모드: 21%에서 전량 청산
+            if single_profit_cut:
+                if remaining_position == 1.0 and day['high'] >= take_profit_2:
+                    # 전량 익절 (21%)
+                    total_profit += 1.0 * ((take_profit_2 - entry_price) / entry_price) * 100
+                    exit_date = day['date']
+                    exit_reason = 'take_profit_2'
+                    remaining_position = 0.0
+                    if not first_exit_date:
+                        first_exit_date = day['date']
+                        first_exit_reason = 'take_profit_2'
+                    break
+            # 다단계 익절 모드: 13%에서 50%, 21%에서 50%
+            else:
+                # 1차 익절가 확인 (고가가 1차 익절가 이상)
+                if remaining_position == 1.0 and day['high'] >= take_profit_1:
+                    # 50% 익절
+                    total_profit += 0.5 * ((take_profit_1 - entry_price) / entry_price) * 100
+                    remaining_position = 0.5
+                    if not first_exit_date:
+                        first_exit_date = day['date']
+                        first_exit_reason = 'take_profit_1'
+                    # 계속 진행하여 2차 익절 체크
+                
+                # 2차 익절가 확인 (고가가 2차 익절가 이상)
+                if remaining_position == 0.5 and day['high'] >= take_profit_2:
+                    # 나머지 50% 익절
+                    total_profit += 0.5 * ((take_profit_2 - entry_price) / entry_price) * 100
+                    exit_date = day['date']
+                    exit_reason = 'take_profit_2'
+                    remaining_position = 0.0
+                    break
         
         # 남은 포지션 처리
         if remaining_position > 0:
@@ -711,6 +729,7 @@ def main():
     parser.add_argument('--low_period', type=int, default=20, help='변동폭 계산 기간 (일, 기본값: 20, 피보나치 손익 계산에 사용)')
     parser.add_argument('--silent', action='store_true', help='간략 출력 모드 (최종 결과만 표시)')
     parser.add_argument('--debug', action='store_true', help='디버그 모드 (각 조건별 통과율 표시)')
+    parser.add_argument('--single-profit-cut', action='store_true', help='단일 익절 모드 (21%에서 전량 청산, 13% 익절 없음)')
     
     args = parser.parse_args()
     
@@ -779,14 +798,23 @@ def main():
     
     # 백테스팅 실행 (옵션이 주어진 경우)
     if args.backtest:
-        backtested_stocks = backtest_stocks(selected_stocks, trading_days, end_date, silent=args.silent)
+        backtested_stocks = backtest_stocks(
+            selected_stocks, 
+            trading_days, 
+            end_date, 
+            silent=args.silent,
+            single_profit_cut=args.single_profit_cut
+        )
         
         # 최종 결과 출력 (백테스팅 포함)
         print_final_summary(backtested_stocks, silent=args.silent)
         
         # 백테스팅 통계
         print(f"\n{'='*80}")
-        print(f"백테스팅 통계 (단계적 익절: 13%에서 50%, 21%에서 나머지 50%)")
+        if args.single_profit_cut:
+            print(f"백테스팅 통계 (단일 익절: 21%에서 전량 청산)")
+        else:
+            print(f"백테스팅 통계 (단계적 익절: 13%에서 50%, 21%에서 나머지 50%)")
         print(f"{'='*80}")
         
         total = len(backtested_stocks)
@@ -811,10 +839,17 @@ def main():
         print(f"패: {lose_count}개 ({lose_count/total*100:.1f}%)")
         print(f"")
         print(f"손절: {stop_loss_count}개 ({stop_loss_count/total*100:.1f}%)")
-        print(f"1차 익절 (13%, 50% 청산): {take_profit_1_count}개 ({take_profit_1_count/total*100:.1f}%)")
-        print(f"2차 익절 (21%, 전량 청산): {take_profit_2_count}개 ({take_profit_2_count/total*100:.1f}%)")
-        print(f"1차 익절 후 홀딩: {holding_50_count}개 ({holding_50_count/total*100:.1f}%)")
-        print(f"전량 홀딩: {holding_100_count}개 ({holding_100_count/total*100:.1f}%)")
+        
+        if args.single_profit_cut:
+            # 단일 익절 모드
+            print(f"익절 (21%, 전량 청산): {take_profit_2_count}개 ({take_profit_2_count/total*100:.1f}%)")
+            print(f"전량 홀딩: {holding_100_count}개 ({holding_100_count/total*100:.1f}%)")
+        else:
+            # 다단계 익절 모드
+            print(f"1차 익절 (13%, 50% 청산): {take_profit_1_count}개 ({take_profit_1_count/total*100:.1f}%)")
+            print(f"2차 익절 (21%, 전량 청산): {take_profit_2_count}개 ({take_profit_2_count/total*100:.1f}%)")
+            print(f"1차 익절 후 홀딩: {holding_50_count}개 ({holding_50_count/total*100:.1f}%)")
+            print(f"전량 홀딩: {holding_100_count}개 ({holding_100_count/total*100:.1f}%)")
         print(f"")
         print(f"평균 수익률: {avg_profit:+.2f}%")
         print(f"최대 수익률: {max_profit:+.2f}%")
