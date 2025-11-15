@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 
 """
-모멘텀 + 추세 전략 종목 선별 프로그램
+모멘텀 + 추세 전략 종목 선별 프로그램 (개선 버전 v2)
 
 전략:
-1. 추세 필터: 60일선 > 120일선, 현재가 > 60일선 (상승 추세 확인)
-2. 20일 신고가 돌파
+1. 정배열 필터: 현재가 > 5일선 > 20일선 > 60일선 > 120일선 ← 강화
+2. 20일 신고가 근접 (98~102% 범위) ← 4%로 축소
 3. 거래량 폭발 (평균 거래량의 2배 이상)
-4. MACD > Signal (상승 모멘텀 확인)
-5. MACD > 0 (진짜 상승 추세 확인) ← NEW
+4. RSI 골든크로스 (RSI > RSI Signal)
+5. MACD > 0 (진짜 상승 추세 확인)
 
 손절/익절:
 - 손절: -8% (전량 청산)
@@ -37,7 +37,13 @@ class TechnicalIndicators:
         
         result = [None] * (period - 1)
         for i in range(period - 1, len(data)):
-            result.append(sum(data[i-period+1:i+1]) / period)
+            window = data[i-period+1:i+1]
+            # None 값 필터링
+            valid_values = [x for x in window if x is not None]
+            if len(valid_values) == period:
+                result.append(sum(valid_values) / period)
+            else:
+                result.append(None)
         
         return result
     
@@ -88,6 +94,42 @@ class TechnicalIndicators:
         result = [None] * (period - 1)
         for i in range(period - 1, len(data)):
             result.append(max(data[i-period+1:i+1]))
+        
+        return result
+    
+    @staticmethod
+    def calculate_rsi(data, period=14):
+        """RSI 계산"""
+        if len(data) < period + 1:
+            return [None] * len(data)
+        
+        result = [None] * period
+        
+        gains = []
+        losses = []
+        
+        for i in range(1, len(data)):
+            change = data[i] - data[i-1]
+            if change > 0:
+                gains.append(change)
+                losses.append(0)
+            else:
+                gains.append(0)
+                losses.append(abs(change))
+        
+        avg_gain = sum(gains[:period]) / period
+        avg_loss = sum(losses[:period]) / period
+        
+        for i in range(period, len(gains)):
+            if avg_loss == 0:
+                result.append(100)
+            else:
+                rs = avg_gain / avg_loss
+                rsi = 100 - (100 / (1 + rs))
+                result.append(rsi)
+            
+            avg_gain = (avg_gain * (period - 1) + gains[i]) / period
+            avg_loss = (avg_loss * (period - 1) + losses[i]) / period
         
         return result
 
@@ -188,7 +230,7 @@ class StockScreener:
             'trend_filter': 0,
             'new_high': 0,
             'volume_surge': 0,
-            'macd_positive': 0,
+            'rsi_golden_cross': 0,
             'macd_positive_value': 0,
             'all_passed': 0
         }
@@ -221,7 +263,9 @@ class StockScreener:
             volumes = [t['volume'] for t in timeseries]
             lows = [t['low'] for t in timeseries]
             
-            # 이동평균 계산
+            # 이동평균 계산 (정배열 확인용)
+            ma5 = TechnicalIndicators.calculate_ma(closes, 5)
+            ma20 = TechnicalIndicators.calculate_ma(closes, 20)
             ma60 = TechnicalIndicators.calculate_ma(closes, 60)
             ma120 = TechnicalIndicators.calculate_ma(closes, 120)
             
@@ -230,6 +274,10 @@ class StockScreener:
             
             # MACD 계산
             macd_line, signal_line = TechnicalIndicators.calculate_macd(closes)
+            
+            # RSI 계산 (14일) 및 RSI Signal (RSI의 9일 이동평균)
+            rsi_line = TechnicalIndicators.calculate_rsi(closes, 14)
+            rsi_signal = TechnicalIndicators.calculate_ma(rsi_line, 9)
             
             # 평균 거래량 계산
             avg_volume = TechnicalIndicators.calculate_ma(volumes, 20)
@@ -265,8 +313,8 @@ class StockScreener:
             # 전략 조건 확인 (순방향: 초기 신호 우선, 빠른 진입)
             for i in range(search_start_idx, search_end_idx):
                 passed, stage = self._check_strategy_conditions(
-                    i, closes, highs, volumes, lows, ma60, ma120, high_20,
-                    macd_line, signal_line, avg_volume, debug
+                    i, closes, highs, volumes, lows, ma5, ma20, ma60, ma120, high_20,
+                    macd_line, rsi_line, rsi_signal, avg_volume, debug
                 )
                 
                 if debug and stage > 0:
@@ -274,7 +322,7 @@ class StockScreener:
                     if stage >= 1: debug_stats['trend_filter'] += 1
                     if stage >= 2: debug_stats['new_high'] += 1
                     if stage >= 3: debug_stats['volume_surge'] += 1
-                    if stage >= 4: debug_stats['macd_positive'] += 1
+                    if stage >= 4: debug_stats['rsi_golden_cross'] += 1
                     if stage >= 5: debug_stats['macd_positive_value'] += 1
                     if passed: debug_stats['all_passed'] += 1
                 
@@ -347,23 +395,23 @@ class StockScreener:
             print(f"{'='*60}")
             if debug_stats['total_checked'] > 0:
                 print(f"0단계 - 검사 대상: {debug_stats['total_checked']:,}")
-                print(f"1단계 - 추세 필터 (60>120, 현재>60): {debug_stats['trend_filter']:,} / {debug_stats['total_checked']:,} ({debug_stats['trend_filter']/debug_stats['total_checked']*100:.1f}%)")
+                print(f"1단계 - 정배열 필터 (현재>5>20>60>120): {debug_stats['trend_filter']:,} / {debug_stats['total_checked']:,} ({debug_stats['trend_filter']/debug_stats['total_checked']*100:.1f}%)")
                 if debug_stats['trend_filter'] > 0:
-                    print(f"2단계 - 20일 신고가 근접 (95~102%): {debug_stats['new_high']:,} / {debug_stats['trend_filter']:,} ({debug_stats['new_high']/debug_stats['trend_filter']*100:.1f}%)")
+                    print(f"2단계 - 20일 신고가 근접 (98~102%): {debug_stats['new_high']:,} / {debug_stats['trend_filter']:,} ({debug_stats['new_high']/debug_stats['trend_filter']*100:.1f}%)")
                 if debug_stats['new_high'] > 0:
                     print(f"3단계 - 거래량 폭발 (2배): {debug_stats['volume_surge']:,} / {debug_stats['new_high']:,} ({debug_stats['volume_surge']/debug_stats['new_high']*100:.1f}%)")
                 if debug_stats['volume_surge'] > 0:
-                    print(f"4단계 - MACD > Signal: {debug_stats['macd_positive']:,} / {debug_stats['volume_surge']:,} ({debug_stats['macd_positive']/debug_stats['volume_surge']*100:.1f}%)")
-                if debug_stats['macd_positive'] > 0:
-                    print(f"5단계 - MACD > 0 (진짜 상승): {debug_stats['macd_positive_value']:,} / {debug_stats['macd_positive']:,} ({debug_stats['macd_positive_value']/debug_stats['macd_positive']*100:.1f}%)")
+                    print(f"4단계 - RSI 골든크로스 (RSI > RSI Signal): {debug_stats['rsi_golden_cross']:,} / {debug_stats['volume_surge']:,} ({debug_stats['rsi_golden_cross']/debug_stats['volume_surge']*100:.1f}%)")
+                if debug_stats['rsi_golden_cross'] > 0:
+                    print(f"5단계 - MACD > 0 (진짜 상승): {debug_stats['macd_positive_value']:,} / {debug_stats['rsi_golden_cross']:,} ({debug_stats['macd_positive_value']/debug_stats['rsi_golden_cross']*100:.1f}%)")
                 print(f"최종 선택: {debug_stats['all_passed']:,} 종목")
             else:
                 print("분석할 데이터가 없습니다.")
         
         return selected_stocks
     
-    def _check_strategy_conditions(self, idx, closes, highs, volumes, lows, ma60, ma120, high_20,
-                                   macd_line, signal_line, avg_volume, debug=False):
+    def _check_strategy_conditions(self, idx, closes, highs, volumes, lows, ma5, ma20, ma60, ma120, high_20,
+                                   macd_line, rsi_line, rsi_signal, avg_volume, debug=False):
         """전략 조건 확인 (반환: (통과여부, 도달단계))"""
         stage = 0
         
@@ -372,27 +420,29 @@ class StockScreener:
         
         # 인덱스 범위 확인
         if (idx >= len(closes) or idx >= len(highs) or idx >= len(volumes) or
-            idx >= len(ma60) or idx >= len(ma120) or idx >= len(high_20) or
-            idx >= len(macd_line) or idx >= len(signal_line) or idx >= len(avg_volume)):
+            idx >= len(ma5) or idx >= len(ma20) or idx >= len(ma60) or idx >= len(ma120) or
+            idx >= len(high_20) or idx >= len(macd_line) or idx >= len(rsi_line) or 
+            idx >= len(rsi_signal) or idx >= len(avg_volume)):
             return False, stage
         
         # 필수 값 확인
-        if None in [ma60[idx], ma120[idx], macd_line[idx], signal_line[idx], avg_volume[idx]]:
+        if None in [ma5[idx], ma20[idx], ma60[idx], ma120[idx], macd_line[idx], 
+                    rsi_line[idx], rsi_signal[idx], avg_volume[idx]]:
             return False, stage
         
         if idx == 0 or high_20[idx-1] is None:
             return False, stage
         
-        # 1. 추세 필터: 중장기 상승 추세 확인
-        # - 60일선 > 120일선: 중장기 상승 추세
-        # - 현재가 > 60일선: 단기도 상승 추세
-        if ma60[idx] <= ma120[idx] or closes[idx] <= ma60[idx]:
+        # 1. 추세 필터: 이동평균선 정배열 확인
+        # - 5일선 > 20일선 > 60일선 > 120일선 (정배열)
+        # - 현재가 > 5일선
+        if not (closes[idx] > ma5[idx] > ma20[idx] > ma60[idx] > ma120[idx]):
             return False, stage
         stage = 1
         
-        # 2. 20일 신고가 근접 (95~102% 범위)
-        # 돌파 직전(95~100%) + 돌파 직후 초반(100~102%)을 모두 포착
-        if closes[idx] < high_20[idx-1] * 0.95 or closes[idx] > high_20[idx-1] * 1.02:
+        # 2. 20일 신고가 근접 (98~102% 범위) ← 4%로 축소
+        # 돌파 직전(98~100%) + 돌파 직후 초반(100~102%)을 모두 포착
+        if closes[idx] < high_20[idx-1] * 0.98 or closes[idx] > high_20[idx-1] * 1.02:
             return False, stage
         stage = 2
         
@@ -401,8 +451,8 @@ class StockScreener:
             return False, stage
         stage = 3
         
-        # 4. MACD > Signal (상승 모멘텀 확인)
-        if macd_line[idx] <= signal_line[idx]:
+        # 4. RSI 골든크로스 (RSI > RSI Signal) ← NEW
+        if rsi_line[idx] <= rsi_signal[idx]:
             return False, stage
         stage = 4
         
