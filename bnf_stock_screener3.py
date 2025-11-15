@@ -578,25 +578,56 @@ class BNFStockScreener:
                 # 2) RSI 과매도 상태에서 매수 신호 (RSI 상승 전환)
                 if criteria.get('enable_rsi', True):
                     if rsi_series and len(rsi_series) >= 2 and rsi_signal_series and len(rsi_signal_series) >= 2:
-                        prev_rsi = rsi_series[-2]
-                        curr_rsi = rsi_series[-1]
-                        prev_rsi_signal = rsi_signal_series[-2]
-                        curr_rsi_signal = rsi_signal_series[-1]
+                        rsi_max_threshold = criteria.get('rsi_oversold', 30)
+                        lookback_days = 5
+                        signal_period = 9
+                        golden_cross_found = False
+                        golden_prev_rsi = None
+                        golden_curr_rsi = None
+                        golden_prev_signal = None
+                        golden_curr_signal = None
 
-                        if prev_rsi_signal is None or curr_rsi_signal is None:
+                        if len(rsi_series) < signal_period + lookback_days:
                             passed = False
                         else:
-                            prev_diff = prev_rsi - prev_rsi_signal
-                            curr_diff = curr_rsi - curr_rsi_signal
-                            rsi_max_threshold = criteria.get('rsi_oversold', 30)
+                            start_idx = max(signal_period - 1, len(rsi_series) - lookback_days)
+                        for idx in range(start_idx, len(rsi_series)):
+                            prev_idx = idx - 1
+                            if prev_idx < 0:
+                                continue
 
-                            if not (prev_rsi <= rsi_max_threshold and curr_rsi > prev_rsi and prev_diff <= 0 and curr_diff > 0):
-                                passed = False
-                                print(
-                                    f"RSI 조건 실패 -> prev_rsi: {prev_rsi:.2f}, curr_rsi: {curr_rsi:.2f}, "
-                                    f"prev_signal: {prev_rsi_signal:.2f}, curr_signal: {curr_rsi_signal:.2f}, "
-                                    f"threshold: {rsi_max_threshold}, prev_diff: {prev_diff:.2f}, curr_diff: {curr_diff:.2f}"
-                                )
+                            prev_signal = rsi_signal_series[prev_idx]
+                            curr_signal = rsi_signal_series[idx]
+
+                            if prev_signal is None or curr_signal is None:
+                                continue
+
+                            prev_rsi_val = rsi_series[prev_idx]
+                            curr_rsi_val = rsi_series[idx]
+
+                            prev_diff = prev_rsi_val - prev_signal
+                            curr_diff = curr_rsi_val - curr_signal
+
+                            if (
+                                curr_rsi_val <= rsi_max_threshold and
+                                curr_rsi_val > prev_rsi_val and
+                                prev_diff <= 0 and
+                                curr_diff > 0
+                            ):
+                                golden_cross_found = True
+                                golden_prev_rsi = prev_rsi_val
+                                golden_curr_rsi = curr_rsi_val
+                                golden_prev_signal = prev_signal
+                                golden_curr_signal = curr_signal
+                                break
+
+                        if not golden_cross_found:
+                            passed = False
+                        else:
+                            prev_rsi = golden_prev_rsi
+                            curr_rsi = golden_curr_rsi
+                            prev_rsi_signal = golden_prev_signal
+                            curr_rsi_signal = golden_curr_signal
                     else:
                         passed = False
 

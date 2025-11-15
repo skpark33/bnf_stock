@@ -143,7 +143,7 @@ python bnf_stock_screener3.py --config config.json --ma25 -5
 #### 5. RSI 조건 조정
 
 ```bash
-# RSI가 30 이하이면서 RSI14가 RSI9(시그널)을 상향 돌파한 종목만 선정
+# RSI가 30 이하인 상태에서 최근 5일 내 RSI14가 RSI9(시그널)을 상향 돌파한 종목만 선정
 python bnf_stock_screener3.py --config config.json --rsi-oversold 30
 
 #### 6. 거래량 조건 추가
