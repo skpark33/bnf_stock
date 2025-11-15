@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
-모멘텀 + 추세 전략 종목 선별 프로그램 (개선 버전 v2)
+모멘텀 + 추세 전략 종목 선별 프로그램 (개선 버전 v2.1)
 
 전략:
-1. 정배열 필터: 현재가 > 5일선 > 20일선 > 60일선 > 120일선 ← 강화
-2. 20일 신고가 근접 (98~102% 범위) ← 4%로 축소
+1. 정배열 필터: 현재가 > 5일선 > 20일선 > 60일선 > 120일선
+2. 20일 신고가 근접 (98~102% 범위) + 당일 상승 ← 강화
 3. 거래량 폭발 (평균 거래량의 2배 이상)
 4. RSI 골든크로스 (RSI > RSI Signal)
 5. MACD > 0 (진짜 상승 추세 확인)
@@ -397,7 +397,7 @@ class StockScreener:
                 print(f"0단계 - 검사 대상: {debug_stats['total_checked']:,}")
                 print(f"1단계 - 정배열 필터 (현재>5>20>60>120): {debug_stats['trend_filter']:,} / {debug_stats['total_checked']:,} ({debug_stats['trend_filter']/debug_stats['total_checked']*100:.1f}%)")
                 if debug_stats['trend_filter'] > 0:
-                    print(f"2단계 - 20일 신고가 근접 (98~102%): {debug_stats['new_high']:,} / {debug_stats['trend_filter']:,} ({debug_stats['new_high']/debug_stats['trend_filter']*100:.1f}%)")
+                    print(f"2단계 - 신고가 근접 (98~102%) + 당일 상승: {debug_stats['new_high']:,} / {debug_stats['trend_filter']:,} ({debug_stats['new_high']/debug_stats['trend_filter']*100:.1f}%)")
                 if debug_stats['new_high'] > 0:
                     print(f"3단계 - 거래량 폭발 (2배): {debug_stats['volume_surge']:,} / {debug_stats['new_high']:,} ({debug_stats['volume_surge']/debug_stats['new_high']*100:.1f}%)")
                 if debug_stats['volume_surge'] > 0:
@@ -440,9 +440,13 @@ class StockScreener:
             return False, stage
         stage = 1
         
-        # 2. 20일 신고가 근접 (98~102% 범위) ← 4%로 축소
+        # 2. 20일 신고가 근접 (98~102% 범위) + 당일 상승 ← 강화
         # 돌파 직전(98~100%) + 돌파 직후 초반(100~102%)을 모두 포착
+        # + 전일 대비 상승 (방향성 확인)
         if closes[idx] < high_20[idx-1] * 0.98 or closes[idx] > high_20[idx-1] * 1.02:
+            return False, stage
+        # 당일 가격 상승 확인 (전일 대비 상승)
+        if idx < 1 or closes[idx] <= closes[idx-1]:
             return False, stage
         stage = 2
         
