@@ -11,10 +11,10 @@
 4. RSI 골든크로스 (RSI > RSI Signal)
 5. MACD > 0 (진짜 상승 추세 확인)
 
-손절/익절 (커스터마이징 가능):
+손절/익절/타임아웃 (커스터마이징 가능):
 - 손절: -16% (디폴트, --loss-cut 옵션으로 변경 가능)
 - 익절: +22% (디폴트, --profit-cut 옵션으로 변경 가능)
-- 타임아웃: 30일 경과 시 강제 청산
+- 타임아웃: 35일 경과 시 강제 청산 (디폴트, --low_period 옵션으로 변경 가능)
 """
 
 import json
@@ -504,7 +504,7 @@ def save_results(results, start_date, end_date):
             stop_loss_count = sum(1 for s in sorted_results if s['backtest']['exit_reason'] == 'stop_loss')
             take_profit_count = sum(1 for s in sorted_results if s['backtest']['exit_reason'] == 'take_profit')
             holding_count = sum(1 for s in sorted_results if s['backtest']['exit_reason'] == 'holding')
-            timeout_30days_count = sum(1 for s in sorted_results if s['backtest']['exit_reason'] == 'timeout_30days')
+            timeout_count = sum(1 for s in sorted_results if s['backtest']['exit_reason'].startswith('timeout_'))
             
             # 청산 완료된 종목만 수익률 계산 (홀딩 제외)
             closed_stocks = [s for s in sorted_results 
@@ -520,6 +520,15 @@ def save_results(results, start_date, end_date):
             
             closed_count = len(closed_stocks)
             
+            # 타임아웃 기간 추출 (exit_reason에서)
+            timeout_days_label = "타임아웃"
+            if timeout_count > 0:
+                for s in sorted_results:
+                    if s['backtest']['exit_reason'].startswith('timeout_'):
+                        # 'timeout_20days' -> '20'
+                        timeout_days_label = s['backtest']['exit_reason'].replace('timeout_', '').replace('days', '') + '일'
+                        break
+            
             writer.writerow(['총 종목 수', total])
             writer.writerow(['청산 완료', f'{closed_count}개 ({closed_count/total*100:.1f}%)'])
             writer.writerow(['홀딩 중', f'{holding_count}개 ({holding_count/total*100:.1f}%)'])
@@ -530,7 +539,7 @@ def save_results(results, start_date, end_date):
                 writer.writerow(['패', f'{lose_count}개 ({lose_count/closed_count*100:.1f}%)'])
                 writer.writerow(['손절', f'{stop_loss_count}개 ({stop_loss_count/closed_count*100:.1f}%)'])
                 writer.writerow(['익절 (전량 청산)', f'{take_profit_count}개 ({take_profit_count/closed_count*100:.1f}%)'])
-                writer.writerow(['30일 타임아웃 (강제 청산)', f'{timeout_30days_count}개 ({timeout_30days_count/closed_count*100:.1f}%)'])
+                writer.writerow([f'{timeout_days_label} 타임아웃 (강제 청산)', f'{timeout_count}개 ({timeout_count/closed_count*100:.1f}%)'])
                 writer.writerow(['평균 수익률', f'{avg_profit:+.2f}%'])
                 writer.writerow(['최대 수익률', f'{max_profit:+.2f}%'])
                 writer.writerow(['최소 수익률', f'{min_profit:+.2f}%'])
@@ -598,7 +607,7 @@ def save_results(results, start_date, end_date):
     print(f"{'='*60}")
 
 
-def backtest_stocks(results, trading_days, end_date, silent=False):
+def backtest_stocks(results, trading_days, end_date, silent=False, timeout_days=30):
     """백테스팅: 익일 시가 매수 후 손절/익절 확인"""
     if not silent:
         print(f"\n{'='*80}")
@@ -638,12 +647,12 @@ def backtest_stocks(results, trading_days, end_date, silent=False):
             day = timeseries[i]
             holding_days += 1
             
-            # 30일 경과 시 강제 청산
-            if holding_days >= 30:
+            # 타임아웃 경과 시 강제 청산
+            if holding_days >= timeout_days:
                 current_price = day['close']
                 profit_rate = ((current_price - entry_price) / entry_price) * 100
                 exit_date = day['date']
-                exit_reason = 'timeout_30days'
+                exit_reason = f'timeout_{timeout_days}days'
                 break
             
             # 손절가 먼저 확인 (저가가 손절가 이하)
@@ -706,10 +715,19 @@ def print_final_summary(results, silent=False):
             reason_msg = {
                 'stop_loss': f'손절 ({stock["stop_loss_pct"]:+.1f}%)',
                 'take_profit': f'익절 (+{stock["take_profit_pct"]:.1f}%)',
-                'holding': '홀딩 중',
-                'timeout_30days': '30일 타임아웃 (강제 청산)'
+                'holding': '홀딩 중'
             }
-            print(f"  청산일: {bt['exit_date']} ({reason_msg.get(bt['exit_reason'], bt['exit_reason'])})")
+            
+            # 타임아웃 동적 처리
+            exit_reason_display = reason_msg.get(bt['exit_reason'])
+            if not exit_reason_display and bt['exit_reason'].startswith('timeout_'):
+                # 'timeout_20days' -> '20일 타임아웃 (강제 청산)'
+                days = bt['exit_reason'].replace('timeout_', '').replace('days', '')
+                exit_reason_display = f'{days}일 타임아웃 (강제 청산)'
+            if not exit_reason_display:
+                exit_reason_display = bt['exit_reason']
+            
+            print(f"  청산일: {bt['exit_date']} ({exit_reason_display})")
             print(f"  수익률: {bt['profit_rate']:+.2f}%")
         else:
             print(f"  현재가: {stock['current_price']:,}원")
@@ -756,7 +774,7 @@ def main():
     parser.add_argument('--from', dest='from_date', help='시작일 (YYYYMMDD)')
     parser.add_argument('--to', dest='to_date', help='종료일 (YYYYMMDD)')
     parser.add_argument('--backtest', action='store_true', help='백테스팅 모드 (--from, --to 필수)')
-    parser.add_argument('--low_period', type=int, default=20, help='변동폭 계산 기간 (일, 기본값: 20, 지지선 계산에 사용)')
+    parser.add_argument('--low_period', type=int, default=35, help='타임아웃 기간 (일, 기본값: 35, 강제 청산 및 지지선 계산에 사용)')
     parser.add_argument('--loss-cut', type=float, default=16.0, help='손절 퍼센트 (기본값: 16.0)')
     parser.add_argument('--profit-cut', type=float, default=22.0, help='익절 퍼센트 (기본값: 22.0)')
     parser.add_argument('--silent', action='store_true', help='간략 출력 모드 (최종 결과만 표시)')
@@ -835,7 +853,8 @@ def main():
             selected_stocks, 
             trading_days, 
             end_date, 
-            silent=args.silent
+            silent=args.silent,
+            timeout_days=args.low_period
         )
         
         # 최종 결과 출력 (백테스팅 포함)
@@ -852,7 +871,7 @@ def main():
         stop_loss_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'] == 'stop_loss')
         take_profit_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'] == 'take_profit')
         holding_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'] == 'holding')
-        timeout_30days_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'] == 'timeout_30days')
+        timeout_count = sum(1 for s in backtested_stocks if s['backtest']['exit_reason'].startswith('timeout_'))
         
         # 청산 완료된 종목만 수익률 계산 (홀딩 제외)
         closed_stocks = [s for s in backtested_stocks 
@@ -878,7 +897,7 @@ def main():
         print(f"")
         print(f"손절: {stop_loss_count}개 ({stop_loss_count/closed_count*100:.1f}%)" if closed_count > 0 else "손절: 0개")
         print(f"익절 (+{args.profit_cut}%, 전량 청산): {take_profit_count}개 ({take_profit_count/closed_count*100:.1f}%)" if closed_count > 0 else "익절: 0개")
-        print(f"30일 타임아웃 (강제 청산): {timeout_30days_count}개 ({timeout_30days_count/closed_count*100:.1f}%)" if closed_count > 0 else "30일 타임아웃: 0개")
+        print(f"{args.low_period}일 타임아웃 (강제 청산): {timeout_count}개 ({timeout_count/closed_count*100:.1f}%)" if closed_count > 0 else f"{args.low_period}일 타임아웃: 0개")
         print(f"")
         if closed_count > 0:
             print(f"평균 수익률 (청산 완료 기준): {avg_profit:+.2f}%")
