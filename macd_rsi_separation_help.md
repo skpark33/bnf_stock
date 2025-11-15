@@ -78,14 +78,13 @@ KOSPI 200 전체 종목 (약 200개)
 ### 기본 사용법
 
 ```bash
-python macd_rsi_separation.py --config config.json [--from YYYYMMDD] [--to YYYYMMDD] [--backtest]
+python macd_rsi_separation.py [--from YYYYMMDD] [--to YYYYMMDD] [--backtest] [--low_period N] [--silent]
 ```
 
 ### 명령줄 옵션
 
 | 옵션 | 필수 | 설명 | 기본값 |
 |------|------|------|--------|
-| `--config` | ✅ | 설정 파일 경로 | - |
 | `--from` | ❌ | 분석 시작일 (YYYYMMDD) | 어제 |
 | `--to` | ❌ | 분석 종료일 (YYYYMMDD) | 어제 |
 | `--backtest` | ❌ | 백테스팅 모드 (--from, --to 필수) | - |
@@ -236,7 +235,7 @@ data/json/kospi200/2024/result/macd_rsi_separation_20241201_20241231.json
 ### 1️⃣ 어제 (마지막 거래일) 분석 (기본)
 
 ```bash
-python macd_rsi_separation.py --config config.json
+python macd_rsi_separation.py
 ```
 
 > 💡 `--from`, `--to` 옵션을 생략하면 어제(마지막 거래일)에 MACD 골든 크로스가 발생한 종목만 검색합니다.
@@ -352,7 +351,7 @@ LG전자          94,000원    95,000원    1.06%    90,000원   -4.26%   102,00
 ### 2️⃣ 특정 기간 분석
 
 ```bash
-python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131
+python macd_rsi_separation.py --from 20250101 --to 20250131
 ```
 
 **주의**: 분석 기간보다 최소 60일 이전의 데이터가 필요합니다.
@@ -362,7 +361,7 @@ python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131
 ### 3️⃣ 백테스팅 (실제 수익률 검증)
 
 ```bash
-python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131 --backtest
+python macd_rsi_separation.py --from 20250101 --to 20250131 --backtest
 ```
 
 > 💡 백테스팅 모드에서는 MACD 골든 크로스 다음날 시가에 매수하고, 손절가/익절가 도달 시 매도하는 시뮬레이션을 실행합니다.
@@ -406,10 +405,10 @@ LG전자        20250112    94,000원  20250131    95,000원  ⏳홀딩    +1.06
 
 ```bash
 # 10일 이내 전저점 사용
-python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131 --low_period 10
+python macd_rsi_separation.py --from 20250101 --to 20250131 --low_period 10
 
 # 30일 이내 전저점 사용
-python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131 --low_period 30
+python macd_rsi_separation.py --from 20250101 --to 20250131 --low_period 30
 ```
 
 > 💡 `--low_period`는 손절가 계산 시 MACD 골든 크로스 시점으로부터 과거 몇 일의 저점을 사용할지 지정합니다. 기본값은 12일입니다.
@@ -420,10 +419,10 @@ python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131
 
 ```bash
 # 최종 종목별 상세 정보만 표시
-python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131 --silent
+python macd_rsi_separation.py --from 20250101 --to 20250131 --silent
 
 # 백테스팅 + 간략 모드 (종목별 상세 정보 → 백테스팅 통계만)
-python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131 --backtest --silent
+python macd_rsi_separation.py --from 20250101 --to 20250131 --backtest --silent
 ```
 
 > 💡 `--silent` 옵션 사용 시 중간 단계 출력 없이 최종 결과만 표시됩니다. 백테스팅 모드에서는 종목별 상세 정보를 먼저 표시한 후 백테스팅 통계를 표시합니다.
@@ -433,7 +432,7 @@ python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131
 ### 6️⃣ 데이터가 없을 때
 
 ```bash
-python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131
+python macd_rsi_separation.py --from 20250101 --to 20250131
 ```
 
 **실행 결과:**
@@ -947,5 +946,5 @@ MACD GC: 2025-01-13 (진입가 70,000원)
 ---
 
 **마지막 업데이트:** 2025-01-15  
-**버전:** 2.3 (--low_period 기본값 12로 변경)
+**버전:** 2.4 (--config 옵션 제거)
 

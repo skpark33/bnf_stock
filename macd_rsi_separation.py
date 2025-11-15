@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import argparse
+import csv
 from datetime import datetime, timedelta
 import pandas as pd
 import warnings
@@ -208,7 +209,7 @@ class StockScreener:
         stocks = [{'code': s['code'], 'name': s['name']} for s in latest_day['stocks']]
         return stocks
     
-    def find_macd_golden_cross(self, period_days=None):
+    def find_macd_golden_cross(self, start_date=None, end_date=None):
         """MACD 골든 크로스 발생 종목 찾기"""
         if not self.silent:
             print(f"\n{'='*60}")
@@ -238,7 +239,7 @@ class StockScreener:
             
             # 골든 크로스 찾기
             golden_cross_info = self._find_golden_cross(
-                macd_line, signal_line, timeseries, period_days
+                macd_line, signal_line, timeseries, start_date, end_date
             )
             
             if golden_cross_info:
@@ -417,18 +418,30 @@ class StockScreener:
         
         return separation_stocks
     
-    def _find_golden_cross(self, line1, line2, timeseries, period_days=None):
+    def _find_golden_cross(self, line1, line2, timeseries, start_date=None, end_date=None):
         """골든 크로스 찾기 (전체 또는 지정 기간)"""
-        if period_days:
-            start_index = max(0, len(timeseries) - period_days)
-        else:
-            start_index = 0
+        start_index = 1  # 0이 아닌 1부터 (골든크로스는 이전 값과 비교 필요)
+        end_index = len(timeseries)
         
-        return self._find_golden_cross_in_range(line1, line2, timeseries, start_index, len(timeseries))
+        if start_date:
+            # start_date에 해당하는 인덱스 찾기
+            for i, t in enumerate(timeseries):
+                if t['date'] >= start_date:
+                    start_index = max(1, i)  # 최소 1
+                    break
+        
+        if end_date:
+            # end_date에 해당하는 인덱스 찾기
+            for i, t in enumerate(timeseries):
+                if t['date'] > end_date:
+                    end_index = i
+                    break
+        
+        return self._find_golden_cross_in_range(line1, line2, timeseries, start_index, end_index)
     
     def _find_golden_cross_in_range(self, line1, line2, timeseries, start_index, end_index):
-        """지정된 범위에서 골든 크로스 찾기"""
-        for i in range(start_index + 1, end_index):
+        """지정된 범위에서 골든 크로스 찾기 (역순: 최신 신호 우선)"""
+        for i in range(end_index - 1, start_index, -1):
             if (line1[i] is not None and line2[i] is not None and
                 line1[i-1] is not None and line2[i-1] is not None):
                 
@@ -445,26 +458,90 @@ class StockScreener:
 
 
 def save_results(results, start_date, end_date):
-    """결과를 JSON 파일로 저장"""
-    # 종료 날짜 기준으로 연도 폴더 결정
+    """결과를 CSV 파일로 저장"""
     year = end_date[:4]
     output_dir = f'data/json/kospi200/{year}/result'
     os.makedirs(output_dir, exist_ok=True)
     
-    output_file = os.path.join(output_dir, f'macd_rsi_separation_{start_date}_{end_date}.json')
+    output_file = os.path.join(output_dir, f'macd_rsi_separation_{start_date}_{end_date}.csv')
     
-    output_data = {
-        'analysis_period': {
-            'start_date': start_date,
-            'end_date': end_date
-        },
-        'generated_at': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        'total_selected': len(results),
-        'selected_stocks': results
-    }
+    # 신호일 기준으로 정렬 (MACD 골든크로스 날짜)
+    sorted_results = sorted(results, key=lambda x: x['macd_golden_cross_date'])
     
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(output_data, f, ensure_ascii=False, indent=2)
+    if not sorted_results:
+        with open(output_file, 'w', encoding='utf-8-sig', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['전략', 'MACD + RSI + 이격도 골든크로스'])
+            writer.writerow(['분석기간', f'{start_date} ~ {end_date}'])
+            writer.writerow(['생성일시', datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+            writer.writerow(['선택종목수', '0'])
+        print(f"\n{'='*60}")
+        print(f"✓ 결과 저장 완료: {output_file}")
+        print(f"{'='*60}")
+        return
+    
+    with open(output_file, 'w', encoding='utf-8-sig', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['전략', 'MACD + RSI + 이격도 골든크로스'])
+        writer.writerow(['분석기간', f'{start_date} ~ {end_date}'])
+        writer.writerow(['생성일시', datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+        writer.writerow(['선택종목수', str(len(sorted_results))])
+        writer.writerow([])
+        
+        if 'backtest' in sorted_results[0]:
+            headers = [
+                'MACD신호일', '종목코드', '종목명', 'RSI신호일', '이격도신호일',
+                '진입가', '현재가', '수익률(%)',
+                'MACD', 'Signal', 'RSI', 'RSI_Signal', 'MA5', 'MA20',
+                '손절가', '손절률(%)', '익절가', '익절률(%)', '지지선',
+                '백테스트_진입일', '백테스트_진입가', '백테스트_청산일', '백테스트_청산가',
+                '백테스트_청산사유', '백테스트_수익률(%)'
+            ]
+        else:
+            headers = [
+                'MACD신호일', '종목코드', '종목명', 'RSI신호일', '이격도신호일',
+                '진입가', '현재가', '수익률(%)',
+                'MACD', 'Signal', 'RSI', 'RSI_Signal', 'MA5', 'MA20',
+                '손절가', '손절률(%)', '익절가', '익절률(%)', '지지선'
+            ]
+        
+        writer.writerow(headers)
+        
+        for stock in sorted_results:
+            row = [
+                stock['macd_golden_cross_date'],
+                stock['code'],
+                stock['name'],
+                stock['rsi_golden_cross_date'],
+                stock['ma_separation_golden_cross_date'],
+                stock['entry_price'],
+                stock['current_price'],
+                stock['profit_rate'],
+                stock['macd_value'],
+                stock['macd_signal'],
+                stock['rsi_value'],
+                stock['rsi_signal'],
+                stock['ma5'],
+                stock['ma20'],
+                stock['stop_loss'],
+                stock['stop_loss_pct'],
+                stock['take_profit'],
+                stock['take_profit_pct'],
+                stock['support_low']
+            ]
+            
+            if 'backtest' in stock:
+                bt = stock['backtest']
+                row.extend([
+                    bt['entry_date'],
+                    bt['entry_price'],
+                    bt['exit_date'],
+                    bt['exit_price'],
+                    bt['exit_reason'],
+                    bt['profit_rate']
+                ])
+            
+            writer.writerow(row)
     
     print(f"\n{'='*60}")
     print(f"✓ 결과 저장 완료: {output_file}")
@@ -666,16 +743,16 @@ def main():
         epilog='''
 사용 예시:
   1. 특정 기간 분석:
-     python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131
+     python macd_rsi_separation.py --from 20250101 --to 20250131
 
   2. 어제 (마지막 거래일) 분석 (기본):
-     python macd_rsi_separation.py --config config.json
+     python macd_rsi_separation.py
 
   3. 백테스팅 (특정 기간 + 실제 수익률 계산):
-     python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131 --backtest
+     python macd_rsi_separation.py --from 20250101 --to 20250131 --backtest
 
   4. 전저점 기간 지정 (10일):
-     python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131 --low_period 10
+     python macd_rsi_separation.py --from 20250101 --to 20250131 --low_period 10
 
 선별 기준:
   1. MACD 골든 크로스 발생 종목
@@ -692,7 +769,6 @@ def main():
         '''
     )
     
-    parser.add_argument('--config', required=True, help='설정 파일 경로 (JSON)')
     parser.add_argument('--from', dest='from_date', help='시작일 (YYYYMMDD)')
     parser.add_argument('--to', dest='to_date', help='종료일 (YYYYMMDD)')
     parser.add_argument('--backtest', action='store_true', help='백테스팅 모드 (--from, --to 필수)')
@@ -705,7 +781,7 @@ def main():
     if args.backtest and (not args.from_date or not args.to_date):
         print("❌ 백테스팅 모드는 --from, --to 옵션이 필수입니다.")
         print("\n사용 예시:")
-        print("  python macd_rsi_separation.py --config config.json --from 20250101 --to 20250131 --backtest")
+        print("  python macd_rsi_separation.py --from 20250101 --to 20250131 --backtest")
         sys.exit(1)
     
     if not args.silent:
@@ -715,19 +791,7 @@ def main():
         else:
             print("MACD, RSI, 이격도 골든 크로스 종목 선별 프로그램")
         print("=" * 60)
-    
-    # 설정 파일 로드 (실제로는 사용하지 않지만 호환성 유지)
-    try:
-        with open(args.config, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-        if not args.silent:
-            print(f"✓ 설정 파일 '{args.config}' 로드 완료\n")
-    except FileNotFoundError:
-        print(f"❌ 설정 파일 '{args.config}'을 찾을 수 없습니다.")
-        sys.exit(1)
-    except json.JSONDecodeError:
-        print(f"❌ 설정 파일 '{args.config}'의 JSON 형식이 잘못되었습니다.")
-        sys.exit(1)
+        print()
     
     # 날짜 범위 설정
     if args.from_date:
@@ -740,8 +804,8 @@ def main():
         end_date = yesterday.strftime("%Y%m%d")
         start_date = end_date  # 1일만 분석
     
-    # 분석을 위해 더 많은 데이터 필요 (최소 60일)
-    extended_start = (datetime.strptime(start_date, "%Y%m%d") - timedelta(days=60)).strftime("%Y%m%d")
+    # 분석을 위해 더 많은 데이터 필요 (최소 150일: 충분한 거래일 확보)
+    extended_start = (datetime.strptime(start_date, "%Y%m%d") - timedelta(days=150)).strftime("%Y%m%d")
     
     if not args.silent:
         print(f"분석 기간: {start_date} ~ {end_date}")
@@ -762,19 +826,11 @@ def main():
     # 종목 선별
     screener = StockScreener(trading_days, silent=args.silent)
     
-    # MACD 골든 크로스 검색 기간 결정
-    # start_date = end_date인 경우 (1일 분석), 마지막 1일만 체크
-    if start_date == end_date:
-        macd_search_period = 1
-        if not args.silent:
-            print(f"MACD 검색 범위: {start_date} (1일)")
-    else:
-        macd_search_period = None  # 전체 기간
-        if not args.silent:
-            print(f"MACD 검색 범위: {start_date} ~ {end_date}")
+    if not args.silent:
+        print(f"MACD 검색 범위: {start_date} ~ {end_date}")
     
     # 1단계: MACD 골든 크로스
-    macd_stocks = screener.find_macd_golden_cross(period_days=macd_search_period)
+    macd_stocks = screener.find_macd_golden_cross(start_date=start_date, end_date=end_date)
     
     if not macd_stocks:
         print("\n⚠️  MACD 골든 크로스 종목이 없어 분석을 종료합니다.")
