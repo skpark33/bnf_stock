@@ -9,10 +9,13 @@
 2. 20일 신고가 돌파
 3. 거래량 폭발 (평균 거래량의 2배 이상)
 4. MACD > Signal (상승 모멘텀 확인)
+5. MACD > 0 (진짜 상승 추세 확인) ← NEW
 
 손절/익절:
-- 손절가: 신고가 돌파일 기준 이전 N일(--low_period) 최저가
-- 익절가: 손절폭의 2배
+- 손절: -8% (전량 청산)
+- 1차 익절: +13% (50% 청산)
+- 2차 익절: +21% (나머지 50% 청산)
+- 타임아웃: 30일 경과 시 강제 청산
 """
 
 import json
@@ -114,7 +117,7 @@ class DataLoader:
                     data = json.load(f)
                     year_data_count = len(data['data'])
                     all_days.extend(data['data'])
-                    print(f"  ✓ {year}년 데이터 로드: {year_data_count}일")
+                    print(f"  {year}년 데이터 로드: {year_data_count}일")
             else:
                 print(f"  ⚠️  {year}년 데이터 파일 없음: {file_path}")
         
@@ -186,6 +189,7 @@ class StockScreener:
             'new_high': 0,
             'volume_surge': 0,
             'macd_positive': 0,
+            'macd_positive_value': 0,
             'all_passed': 0
         }
         
@@ -271,6 +275,7 @@ class StockScreener:
                     if stage >= 2: debug_stats['new_high'] += 1
                     if stage >= 3: debug_stats['volume_surge'] += 1
                     if stage >= 4: debug_stats['macd_positive'] += 1
+                    if stage >= 5: debug_stats['macd_positive_value'] += 1
                     if passed: debug_stats['all_passed'] += 1
                 
                 if passed:
@@ -327,7 +332,7 @@ class StockScreener:
                     break  # 종목당 한 번만
         
         if not self.silent:
-            print(f"\n✓ 전략 조건 만족 종목: {len(selected_stocks)}개")
+            print(f"\n전략 조건 만족 종목: {len(selected_stocks)}개")
             for stock in selected_stocks[:10]:
                 print(f"  - {stock['name']} ({stock['code']}): {stock['signal_date']}, "
                       f"진입가 {stock['entry_price']:,}원 → 현재가 {stock['current_price']:,}원 ({stock['profit_rate']:+.1f}%), "
@@ -349,6 +354,8 @@ class StockScreener:
                     print(f"3단계 - 거래량 폭발 (2배): {debug_stats['volume_surge']:,} / {debug_stats['new_high']:,} ({debug_stats['volume_surge']/debug_stats['new_high']*100:.1f}%)")
                 if debug_stats['volume_surge'] > 0:
                     print(f"4단계 - MACD > Signal: {debug_stats['macd_positive']:,} / {debug_stats['volume_surge']:,} ({debug_stats['macd_positive']/debug_stats['volume_surge']*100:.1f}%)")
+                if debug_stats['macd_positive'] > 0:
+                    print(f"5단계 - MACD > 0 (진짜 상승): {debug_stats['macd_positive_value']:,} / {debug_stats['macd_positive']:,} ({debug_stats['macd_positive_value']/debug_stats['macd_positive']*100:.1f}%)")
                 print(f"최종 선택: {debug_stats['all_passed']:,} 종목")
             else:
                 print("분석할 데이터가 없습니다.")
@@ -399,6 +406,11 @@ class StockScreener:
             return False, stage
         stage = 4
         
+        # 5. MACD > 0 (진짜 상승 추세 확인)
+        if macd_line[idx] <= 0:
+            return False, stage
+        stage = 5
+        
         return True, stage
 
 
@@ -422,7 +434,7 @@ def save_results(results, start_date, end_date):
             writer.writerow(['생성일시', datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
             writer.writerow(['선택종목수', '0'])
         print(f"\n{'='*60}")
-        print(f"✓ 결과 저장 완료: {output_file}")
+        print(f"결과 저장 완료: {output_file}")
         print(f"{'='*60}")
         return
     
@@ -539,7 +551,7 @@ def save_results(results, start_date, end_date):
             writer.writerow(row)
     
     print(f"\n{'='*60}")
-    print(f"✓ 결과 저장 완료: {output_file}")
+    print(f"결과 저장 완료: {output_file}")
     print(f"{'='*60}")
 
 
@@ -801,7 +813,7 @@ def main():
         sys.exit(1)
     
     if not args.silent:
-        print(f"✓ 로드된 거래일: {len(trading_days)}일")
+        print(f"로드된 거래일: {len(trading_days)}일")
         print(f"  첫 거래일: {trading_days[0]['date']}")
         print(f"  마지막 거래일: {trading_days[-1]['date']}")
         print(f"  종목 수: {len(trading_days[-1]['stocks'])}개\n")
